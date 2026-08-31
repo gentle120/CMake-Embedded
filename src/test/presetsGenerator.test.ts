@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { getDeviceProfile } from '../devices/deviceProfiles';
 import { generateCMakePresets } from '../generator/presetsGenerator';
 
 test('generates valid debug CMake presets', () => {
@@ -15,5 +16,14 @@ test('generates valid debug CMake presets', () => {
   assert.equal(
     presets.configurePresets[0].cacheVariables.CMAKE_TOOLCHAIN_FILE,
     '${sourceDir}/cmake/gd32-toolchain.cmake'
+  );
+});
+
+test('uses the selected device toolchain filename in presets', () => {
+  const presets = JSON.parse(generateCMakePresets(getDeviceProfile('STM32F407VGT6').toolchainFileName));
+
+  assert.equal(
+    presets.configurePresets[0].cacheVariables.CMAKE_TOOLCHAIN_FILE,
+    '${sourceDir}/cmake/stm32f4-toolchain.cmake'
   );
 });

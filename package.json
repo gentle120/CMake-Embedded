@@ -1,9 +1,13 @@
 {
-  "name": "mcu-cmake-generator",
-  "displayName": "MCU CMake Generator",
+  "name": "cmake-embedded",
+  "displayName": "CMake-Embedded",
   "description": "Generate a CMake build project for MCU firmware.",
   "version": "0.0.1",
-  "publisher": "local",
+  "publisher": "gentle120",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gentle120/CMake-Embedded.git"
+  },
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
@@ -15,6 +19,7 @@
     "onCommand:mcuCmake.generate"
   ],
   "main": "./out/extension.js",
+  "icon": "images/icon-electric.png",
   "contributes": {
     "commands": [
       {

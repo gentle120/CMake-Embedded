@@ -18,6 +18,15 @@ preprocessor definitions, then generates the CMake files needed for an
 - Generate `.elf`, `.hex`, and `.bin` files after a successful build
 - Prompt before overwriting generated files
 
+The device database currently includes common STM32/GD32 F1 and F4 parts,
+including `GD32F103C8T6`, `GD32F103CBT6`, `GD32F103RBT6`, `GD32F407VGT6`,
+`GD32F450VGT6`, `STM32F103C8T6`, `STM32F103CBT6`, `STM32F103RBT6`,
+`STM32F103VBT6`, `STM32F405RGT6`, `STM32F407VET6`, `STM32F407VGT6`, and
+`STM32F407ZGT6`.
+
+The device picker groups them by vendor first (`STM` or `GD`), then by series
+(`STMF1x`, `STMF4x`, `GDF1x`, or `GDF4x`).
+
 ## Requirements
 
 - VS Code 1.85 or newer

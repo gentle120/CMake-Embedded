@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { access, mkdir, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { getDeviceProfile, listDeviceProfiles } from './devices/deviceProfiles';
+import { buildDeviceSelectionItems } from './devices/deviceSelection';
 import { generateCMakeLists } from './generator/cmakeGenerator';
 import { generateLinkerScript } from './generator/linkerGenerator';
 import { generateCMakePresets } from './generator/presetsGenerator';
@@ -52,7 +53,7 @@ function createGeneratedFiles(root: string, projectName: string, part: string, p
     ...startupFiles,
     ...runtimeFiles,
     {
-      path: join(cmakeDir, 'gd32-toolchain.cmake'),
+      path: join(cmakeDir, profile.toolchainFileName),
       content: generateToolchainFile(profile)
     },
     {
@@ -61,7 +62,7 @@ function createGeneratedFiles(root: string, projectName: string, part: string, p
     },
     {
       path: join(root, 'CMakePresets.json'),
-      content: generateCMakePresets()
+      content: generateCMakePresets(profile.toolchainFileName)
     },
     {
       path: join(root, '.mcu-cmake.json'),
@@ -78,14 +79,19 @@ async function generateProject(): Promise<void> {
   }
 
   const selection = await vscode.window.showQuickPick(
-    listDeviceProfiles().map((profile) => ({
-      label: profile.part,
-      description: `${profile.family} / ${profile.core}`,
-      detail: `${profile.flash.length / 1024} KB Flash, ${profile.ram.length / 1024} KB RAM`
-    })),
+    buildDeviceSelectionItems(listDeviceProfiles()).map((item) => item.kind === 'separator'
+      ? {
+          label: item.label,
+          kind: vscode.QuickPickItemKind.Separator
+        }
+      : {
+          label: item.profile.part,
+          description: `${item.profile.family} / ${item.profile.core}`,
+          detail: `${item.profile.flash.length / 1024} KB Flash, ${item.profile.ram.length / 1024} KB RAM`
+        }),
     { placeHolder: 'Select the MCU for this project' }
   );
-  if (!selection) {
+  if (!selection || selection.kind === vscode.QuickPickItemKind.Separator) {
     return;
   }
 

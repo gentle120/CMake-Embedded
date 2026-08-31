@@ -23,3 +23,19 @@ test('generates an arm-none-eabi toolchain file', () => {
   assert.match(toolchain, /GD32F103C8T6\.ld/);
   assert.match(toolchain, /-Wl,-Map=.*CMAKE_PROJECT_NAME.*-Wl,--gc-sections/);
 });
+
+test('generates hard-float Cortex-M4 compiler and linker flags', () => {
+  const toolchain = generateToolchainFile(getDeviceProfile('STM32F407VGT6'));
+
+  assert.match(toolchain, /set\(TARGET_FLAGS "-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard"\)/);
+  assert.match(toolchain, /CMAKE_C_FLAGS_INIT.*TARGET_FLAGS/);
+  assert.match(toolchain, /CMAKE_ASM_FLAGS_INIT.*TARGET_FLAGS/);
+  assert.match(toolchain, /CMAKE_EXE_LINKER_FLAGS_INIT.*TARGET_FLAGS/);
+  assert.doesNotMatch(toolchain, /-mcpu=cortex-m3/);
+});
+
+test('keeps Cortex-M3 profiles free of floating-point ABI flags', () => {
+  const toolchain = generateToolchainFile(getDeviceProfile('GD32F103C8T6'));
+
+  assert.doesNotMatch(toolchain, /-mfpu=|-mfloat-abi=/);
+});

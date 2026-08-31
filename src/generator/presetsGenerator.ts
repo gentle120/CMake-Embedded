@@ -1,4 +1,4 @@
-export function generateCMakePresets(): string {
+export function generateCMakePresets(toolchainFileName = 'gd32-toolchain.cmake'): string {
   return `${JSON.stringify({
     version: 3,
     configurePresets: [
@@ -9,7 +9,7 @@ export function generateCMakePresets(): string {
         binaryDir: '${sourceDir}/build/debug',
         cacheVariables: {
           CMAKE_BUILD_TYPE: 'Debug',
-          CMAKE_TOOLCHAIN_FILE: '${sourceDir}/cmake/gd32-toolchain.cmake'
+          CMAKE_TOOLCHAIN_FILE: '${sourceDir}/cmake/' + toolchainFileName
         }
       }
     ],

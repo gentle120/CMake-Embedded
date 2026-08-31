@@ -3,8 +3,20 @@ export interface MemoryRegion {
   length: number;
 }
 
+export type DeviceSeries = 'F1x' | 'F4x';
+export type DeviceVendor = 'STM' | 'GD';
+
+export interface AdditionalMemoryRegion {
+  name: string;
+  attributes: 'rx' | 'rw' | 'rwx';
+  origin: number;
+  length: number;
+}
+
 export interface DeviceProfile {
   part: string;
+  vendor: DeviceVendor;
+  series: DeviceSeries;
   family: string;
   core: string;
   architecture: 'arm';
@@ -13,34 +25,43 @@ export interface DeviceProfile {
   compilerFlags: string[];
   flash: MemoryRegion;
   ram: MemoryRegion;
+  additionalMemory?: AdditionalMemoryRegion[];
   linkerFileName: string;
   gnuStartupFileName: string;
+  toolchainFileName: string;
+  interruptHandlers: string[];
+  debugTarget?: string;
 }
 
-const profiles: Record<string, DeviceProfile> = {
-  GD32F103C8T6: {
-    part: 'GD32F103C8T6',
-    family: 'GD32F10x',
-    core: 'cortex-m3',
-    architecture: 'arm',
-    toolchainPrefix: 'arm-none-eabi',
-    defines: ['GD32F10X_MD'],
-    compilerFlags: ['-mcpu=cortex-m3', '-mthumb'],
-    flash: { origin: 0x08000000, length: 64 * 1024 },
-    ram: { origin: 0x20000000, length: 20 * 1024 },
-    linkerFileName: 'GD32F103C8T6.ld',
-    gnuStartupFileName: 'startup_gd32f10x_md.S'
-  }
-};
+import { gd32Profiles } from './gd32Profiles';
+import { stm32Profiles } from './stm32Profiles';
+import { validateDeviceProfile } from './profileValidation';
 
-export function listDeviceProfiles(): DeviceProfile[] {
-  return Object.values(profiles).map((profile) => ({
+const allProfiles = [...gd32Profiles, ...stm32Profiles];
+const profiles: Record<string, DeviceProfile> = {};
+for (const profile of allProfiles) {
+  validateDeviceProfile(profile);
+  const key = profile.part.toUpperCase();
+  if (profiles[key]) {
+    throw new Error(`Invalid MCU profile ${profile.part}: duplicate part`);
+  }
+  profiles[key] = profile;
+}
+
+function copyProfile(profile: DeviceProfile): DeviceProfile {
+  return {
     ...profile,
     defines: [...profile.defines],
     compilerFlags: [...profile.compilerFlags],
+    interruptHandlers: [...profile.interruptHandlers],
     flash: { ...profile.flash },
-    ram: { ...profile.ram }
-  }));
+    ram: { ...profile.ram },
+    additionalMemory: profile.additionalMemory?.map((region) => ({ ...region }))
+  };
+}
+
+export function listDeviceProfiles(): DeviceProfile[] {
+  return Object.values(profiles).map(copyProfile);
 }
 
 export function getDeviceProfile(part: string): DeviceProfile {
@@ -48,5 +69,5 @@ export function getDeviceProfile(part: string): DeviceProfile {
   if (!profile) {
     throw new Error(`Unsupported MCU: ${part}`);
   }
-  return profile;
+  return copyProfile(profile);
 }

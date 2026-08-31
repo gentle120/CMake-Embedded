@@ -17,6 +17,15 @@
 - 构建成功后生成 `.elf`、`.hex` 和 `.bin` 文件
 - 覆盖已有生成文件前进行确认
 
+当前芯片数据库支持常用的 STM32/GD32 F1 和 F4 型号，包括：
+`GD32F103C8T6`、`GD32F103CBT6`、`GD32F103RBT6`、`GD32F407VGT6`、
+`GD32F450VGT6`、`STM32F103C8T6`、`STM32F103CBT6`、`STM32F103RBT6`、
+`STM32F103VBT6`、`STM32F405RGT6`、`STM32F407VET6`、
+`STM32F407VGT6` 和 `STM32F407ZGT6`。
+
+芯片选择列表会先按厂商分为 `STM` 和 `GD`，再按系列分为
+`STMF1x`、`STMF4x`、`GDF1x` 和 `GDF4x`。
+
 ## 环境要求
 
 - VS Code 1.85 或更高版本

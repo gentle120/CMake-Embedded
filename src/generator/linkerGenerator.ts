@@ -13,6 +13,14 @@ export function generateLinkerScript(profile: DeviceProfile): string {
   const ramOrigin = hexadecimal(profile.ram.origin);
   const flashLength = kilobytes(profile.flash.length);
   const ramLength = kilobytes(profile.ram.length);
+  const additionalMemory = (profile.additionalMemory ?? [])
+    .map((region) => `  ${region.name} (${region.attributes}) : ORIGIN = ${hexadecimal(region.origin)}, LENGTH = ${kilobytes(region.length)}`)
+    .join('\n');
+  const memoryLines = [
+    `  FLASH (rx)  : ORIGIN = ${flashOrigin}, LENGTH = ${flashLength}`,
+    `  RAM (rw)    : ORIGIN = ${ramOrigin}, LENGTH = ${ramLength}`,
+    additionalMemory
+  ].filter(Boolean).join('\n');
 
   return `/* Generated for ${profile.part}. Review custom memory reservations before flashing. */
 ENTRY(Reset_Handler)
@@ -24,8 +32,7 @@ _Min_Stack_Size = 0x400;
 
 MEMORY
 {
-  FLASH (rx)  : ORIGIN = ${flashOrigin}, LENGTH = ${flashLength}
-  RAM (rw)    : ORIGIN = ${ramOrigin}, LENGTH = ${ramLength}
+${memoryLines}
 }
 
 SECTIONS

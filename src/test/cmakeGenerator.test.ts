@@ -53,3 +53,18 @@ test('replaces legacy startup sources with the generated GNU startup file', () =
   assert.doesNotMatch(cmake, /startup_gd32f10x_md\.s/);
   assert.match(cmake, /MCU_PROJECT_ROOT.*startup_gd32f10x_md\.S/s);
 });
+
+test('uses the selected STM32 startup, linker, and definitions in CMake', () => {
+  const project: ProjectDescription = {
+    sources: ['Core/Src/main.c', 'startup_stm32f407xx.s'],
+    includeDirs: ['Core/Inc'],
+    defines: []
+  };
+
+  const cmake = generateCMakeLists('firmware', project, getDeviceProfile('STM32F407VGT6'));
+
+  assert.match(cmake, /startup_stm32f407xx\.S/);
+  assert.doesNotMatch(cmake, /startup_stm32f407xx\.s/);
+  assert.match(cmake, /STM32F407xx/);
+  assert.doesNotMatch(cmake, /GD32F10X_MD|gd32-gcc-compat|VECT_TAB_OFFSET/);
+});
