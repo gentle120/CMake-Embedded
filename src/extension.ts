@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { access, mkdir, writeFile } from 'node:fs/promises';
-import { join, basename } from 'node:path';
+import { join, basename, relative } from 'node:path';
 import { getDeviceProfile, listDeviceProfiles } from './devices/deviceProfiles';
 import { buildDeviceSelectionItems } from './devices/deviceSelection';
 import { generateCMakeLists } from './generator/cmakeGenerator';
@@ -9,6 +9,7 @@ import { generateCMakePresets } from './generator/presetsGenerator';
 import { generateGnuStartup } from './generator/startupGenerator';
 import { generateToolchainFile } from './generator/toolchainGenerator';
 import { generateSyscalls, generateSysmem, runtimeSourceNames } from './generator/runtimeGenerator';
+import { generateProjectConfig } from './generator/configGenerator';
 import { scanProject } from './scanner/projectScanner';
 
 interface GeneratedFile {
@@ -30,7 +31,7 @@ function projectNameFromRoot(root: string): string {
   return name || 'firmware';
 }
 
-function createGeneratedFiles(root: string, projectName: string, part: string, project: Awaited<ReturnType<typeof scanProject>>, files: GeneratedFile[]): GeneratedFile[] {
+function createGeneratedFiles(root: string, part: string, project: Awaited<ReturnType<typeof scanProject>>, files: GeneratedFile[]): GeneratedFile[] {
   const profile = getDeviceProfile(part);
   const cmakeDir = join(root, 'cmake');
   const hasSource = (fileName: string): boolean => {
@@ -64,10 +65,6 @@ function createGeneratedFiles(root: string, projectName: string, part: string, p
       path: join(root, 'CMakePresets.json'),
       content: generateCMakePresets(profile.toolchainFileName)
     },
-    {
-      path: join(root, '.mcu-cmake.json'),
-      content: `${JSON.stringify({ device: profile.part, projectName }, null, 2)}\n`
-    }
   ];
 }
 
@@ -108,11 +105,13 @@ async function generateProject(): Promise<void> {
     path: join(root, 'CMakeLists.txt'),
     content: generateCMakeLists(projectName, project, profile)
   }];
-  const generatedFiles = createGeneratedFiles(root, projectName, profile.part, project, initialFiles);
+  const generatedFiles = createGeneratedFiles(root, profile.part, project, initialFiles);
+  const configPath = join(root, '.mcu-cmake.json');
+  const filesToCheck = [...generatedFiles.map((file) => file.path), configPath];
   const existingFiles: string[] = [];
-  for (const file of generatedFiles) {
-    if (await exists(file.path)) {
-      existingFiles.push(file.path);
+  for (const filePath of filesToCheck) {
+    if (await exists(filePath)) {
+      existingFiles.push(filePath);
     }
   }
   if (existingFiles.length > 0) {
@@ -128,7 +127,17 @@ async function generateProject(): Promise<void> {
 
   await mkdir(join(root, 'cmake'), { recursive: true });
   await mkdir(join(root, 'system'), { recursive: true });
-  await Promise.all(generatedFiles.map((file) => writeFile(file.path, file.content, 'utf8')));
+  const relativePath = (filePath: string): string => relative(root, filePath).replace(/\\/g, '/');
+  const configFile: GeneratedFile = {
+    path: configPath,
+    content: generateProjectConfig(
+      projectName,
+      profile,
+      generatedFiles.map((file) => relativePath(file.path)),
+      existingFiles.map(relativePath)
+    )
+  };
+  await Promise.all([...generatedFiles, configFile].map((file) => writeFile(file.path, file.content, 'utf8')));
   vscode.window.showInformationMessage(
     `Generated CMake project for ${profile.part}: ${project.sources.length} source file(s).`
   );
