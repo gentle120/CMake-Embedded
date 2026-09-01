@@ -14,6 +14,8 @@
 - 生成 MCU 链接脚本和 GNU 汇编启动文件
 - 在 `system/` 目录生成 C 运行时支持文件
 - 生成适用于 Ninja 的 Debug 配置和构建预设
+- 配置 CMake Tools 使用生成的工程预设
+- 使用 CMake 编译数据库配置 C/C++ 插件的 IntelliSense
 - 构建成功后生成 `.elf`、`.hex` 和 `.bin` 文件
 - 覆盖已有生成文件前进行确认
 
@@ -29,6 +31,8 @@
 ## 环境要求
 
 - VS Code 1.85 或更高版本
+- CMake Tools 插件
+- C/C++ 插件
 - CMake 3.22 或更高版本
 - Ninja
 - Arm GNU Toolchain，并确保以下命令位于 `PATH` 中：
@@ -47,6 +51,13 @@
    cmake --build --preset debug
    ```
 
+生成后，CMake Tools 会启用 CMake Presets，并在打开工作区时自动配置工程。
+生成的 `debug` 配置预设和构建预设可以直接在 CMake Tools 中使用。
+C/C++ 插件会从 CMake 生成的 `build/debug/compile_commands.json` 获取头文件路径、
+宏定义、编译器参数和语言设置，同时启用完整 IntelliSense 引擎，使未满足条件的
+`#if`/`#ifdef` 分支自动灰显，并使用 ARM GCC 工具链进行解析。
+未满足条件的 `#if`/`#ifdef` 分支会由 C/C++ 插件自动灰显。
+
 构建目录为 `build/debug`。固件输出文件、map 文件和内存使用报告也会生成
 在该目录下。
 
@@ -56,6 +67,9 @@
 <project>/
 ├── CMakeLists.txt
 ├── CMakePresets.json
+├── .vscode/
+│   ├── settings.json
+│   └── c_cpp_properties.json
 ├── <mcu>.ld
 ├── startup_<device>.S
 ├── cmake/

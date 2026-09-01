@@ -15,6 +15,8 @@ preprocessor definitions, then generates the CMake files needed for an
 - Generate an MCU linker script and GNU assembler startup file
 - Generate the C runtime support files under `system/`
 - Generate Debug configure and build presets for Ninja
+- Configure CMake Tools to use the generated presets
+- Configure C/C++ IntelliSense from the CMake compile database
 - Generate `.elf`, `.hex`, and `.bin` files after a successful build
 - Prompt before overwriting generated files
 
@@ -30,6 +32,8 @@ The device picker groups them by vendor first (`STM` or `GD`), then by series
 ## Requirements
 
 - VS Code 1.85 or newer
+- CMake Tools extension
+- C/C++ extension
 - CMake 3.22 or newer
 - Ninja
 - Arm GNU Toolchain with these commands available in `PATH`:
@@ -48,6 +52,14 @@ The device picker groups them by vendor first (`STM` or `GD`), then by series
    cmake --build --preset debug
    ```
 
+After generation, CMake Tools is configured to use CMake presets and configure
+the project when the workspace opens. The generated `debug` configure and
+build presets are available from CMake Tools. The C/C++ extension reads
+include paths, defines, compiler flags, and language settings from the CMake
+compile database at `build/debug/compile_commands.json`; the full IntelliSense
+engine is enabled with the ARM GCC toolchain so inactive branches of
+`#if`/`#ifdef` blocks are dimmed.
+
 The build directory is `build/debug`. Firmware output files are generated
 there together with the map file and memory usage report.
 
@@ -57,6 +69,9 @@ there together with the map file and memory usage report.
 <project>/
 ├── CMakeLists.txt
 ├── CMakePresets.json
+├── .vscode/
+│   ├── settings.json
+│   └── c_cpp_properties.json
 ├── <mcu>.ld
 ├── startup_<device>.S
 ├── cmake/

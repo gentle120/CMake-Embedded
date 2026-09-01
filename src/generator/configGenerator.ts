@@ -1,4 +1,5 @@
 import type { DeviceProfile, MemoryRegion } from '../devices/deviceProfiles';
+import { getWorkspaceIntegration } from '../integration/workspaceSettings';
 
 function hexadecimal(value: number): string {
   return `0x${value.toString(16).toUpperCase().padStart(8, '0')}`;
@@ -32,6 +33,7 @@ export function generateProjectConfig(
         sizeKB: region.length / 1024
       }))
     },
+    integration: getWorkspaceIntegration(),
     generatedFiles,
     overwrittenFiles
   };

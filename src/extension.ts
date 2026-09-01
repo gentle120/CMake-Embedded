@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { access, mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, basename, relative } from 'node:path';
 import { getDeviceProfile, listDeviceProfiles } from './devices/deviceProfiles';
 import { buildDeviceSelectionItems } from './devices/deviceSelection';
@@ -10,6 +10,8 @@ import { generateGnuStartup } from './generator/startupGenerator';
 import { generateToolchainFile } from './generator/toolchainGenerator';
 import { generateSyscalls, generateSysmem, runtimeSourceNames } from './generator/runtimeGenerator';
 import { generateProjectConfig } from './generator/configGenerator';
+import { getWorkspaceSettings } from './integration/workspaceSettings';
+import { configureCppProperties } from './integration/cppProperties';
 import { scanProject } from './scanner/projectScanner';
 
 interface GeneratedFile {
@@ -23,6 +25,19 @@ async function exists(filePath: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+async function updateWorkspaceSettings(): Promise<void> {
+  for (const [key, value] of Object.entries(getWorkspaceSettings())) {
+    const separator = key.indexOf('.');
+    const section = key.slice(0, separator);
+    const setting = key.slice(separator + 1);
+    await vscode.workspace.getConfiguration(section).update(
+      setting,
+      value,
+      vscode.ConfigurationTarget.Workspace
+    );
   }
 }
 
@@ -107,7 +122,9 @@ async function generateProject(): Promise<void> {
   }];
   const generatedFiles = createGeneratedFiles(root, profile.part, project, initialFiles);
   const configPath = join(root, '.mcu-cmake.json');
-  const filesToCheck = [...generatedFiles.map((file) => file.path), configPath];
+  const settingsPath = join(root, '.vscode', 'settings.json');
+  const cppPropertiesPath = join(root, '.vscode', 'c_cpp_properties.json');
+  const filesToCheck = [...generatedFiles.map((file) => file.path), settingsPath, cppPropertiesPath, configPath];
   const existingFiles: string[] = [];
   for (const filePath of filesToCheck) {
     if (await exists(filePath)) {
@@ -127,17 +144,32 @@ async function generateProject(): Promise<void> {
 
   await mkdir(join(root, 'cmake'), { recursive: true });
   await mkdir(join(root, 'system'), { recursive: true });
+  await mkdir(join(root, '.vscode'), { recursive: true });
   const relativePath = (filePath: string): string => relative(root, filePath).replace(/\\/g, '/');
   const configFile: GeneratedFile = {
     path: configPath,
     content: generateProjectConfig(
       projectName,
       profile,
-      generatedFiles.map((file) => relativePath(file.path)),
+      [...generatedFiles.map((file) => relativePath(file.path)), relativePath(settingsPath), relativePath(cppPropertiesPath)],
       existingFiles.map(relativePath)
     )
   };
-  await Promise.all([...generatedFiles, configFile].map((file) => writeFile(file.path, file.content, 'utf8')));
+  let cppPropertiesContent: string | undefined;
+  if (await exists(cppPropertiesPath)) {
+    cppPropertiesContent = await readFile(cppPropertiesPath, 'utf8');
+  }
+  const cppPropertiesFile: GeneratedFile = {
+    path: cppPropertiesPath,
+    content: configureCppProperties(cppPropertiesContent)
+  };
+  await Promise.all([...generatedFiles, configFile, cppPropertiesFile].map((file) => writeFile(file.path, file.content, 'utf8')));
+  try {
+    await updateWorkspaceSettings();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    vscode.window.showWarningMessage(`CMake Tools/IntelliSense settings were not updated: ${message}`);
+  }
   vscode.window.showInformationMessage(
     `Generated CMake project for ${profile.part}: ${project.sources.length} source file(s).`
   );

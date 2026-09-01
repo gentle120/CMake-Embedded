@@ -18,6 +18,10 @@
   "activationEvents": [
     "onCommand:mcuCmake.generate"
   ],
+  "extensionDependencies": [
+    "ms-vscode.cmake-tools",
+    "ms-vscode.cpptools"
+  ],
   "main": "./out/extension.js",
   "icon": "images/icon-electric.png",
   "contributes": {

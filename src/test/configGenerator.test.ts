@@ -42,6 +42,19 @@ test('records the selected MCU memory and generated file lists', () => {
     'system/sysmem.c'
   ]);
   assert.deepEqual(config.overwrittenFiles, ['CMakeLists.txt', '.mcu-cmake.json']);
+  assert.deepEqual(config.integration, {
+    cmakeTools: {
+      preset: 'debug',
+      configurePreset: 'debug',
+      buildPreset: 'debug',
+      settingsFile: '.vscode/settings.json'
+    },
+    cppTools: {
+      configurationSource: 'CMake compile_commands.json',
+      compileCommands: 'build/debug/compile_commands.json',
+      dimInactiveRegions: true
+    }
+  });
 });
 
 test('records additional memory regions in the project config', () => {
