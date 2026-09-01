@@ -1,0 +1,5 @@
+import { GD32F407VGT6 } from './GD32F407VGT6';
+import { GD32F407RGT6 } from './GD32F407RGT6';
+import { GD32F450VGT6 } from './GD32F450VGT6';
+
+export const gd32f4xxProfiles = [GD32F407RGT6, GD32F407VGT6, GD32F450VGT6];

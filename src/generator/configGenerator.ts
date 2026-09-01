@@ -1,6 +1,15 @@
 import type { DeviceProfile, MemoryRegion } from '../devices/deviceProfiles';
 import { getWorkspaceIntegration } from '../integration/workspaceSettings';
 
+export interface ProjectFlashConfiguration {
+  script: string;
+  probe: string;
+  interfaceConfig: string;
+  openocdPath: string;
+  target: string;
+  transport: string;
+}
+
 function hexadecimal(value: number): string {
   return `0x${value.toString(16).toUpperCase().padStart(8, '0')}`;
 }
@@ -17,7 +26,8 @@ export function generateProjectConfig(
   projectName: string,
   profile: DeviceProfile,
   generatedFiles: string[],
-  overwrittenFiles: string[]
+  overwrittenFiles: string[],
+  flash?: ProjectFlashConfiguration
 ): string {
   const config = {
     projectName,
@@ -37,6 +47,9 @@ export function generateProjectConfig(
     generatedFiles,
     overwrittenFiles
   };
+  if (flash) {
+    Object.assign(config, { flash });
+  }
 
   return `${JSON.stringify(config, null, 2)}\n`;
 }

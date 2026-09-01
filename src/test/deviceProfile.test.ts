@@ -26,17 +26,22 @@ test('lists the initial STM32 and GD32 device profiles', () => {
     [
       'GD32F103C8T6',
       'GD32F103CBT6',
+      'GD32F103R8T6',
       'GD32F103RBT6',
+      'GD32F407RGT6',
       'GD32F407VGT6',
       'GD32F450VGT6',
       'STM32F103C8T6',
       'STM32F103CBT6',
+      'STM32F103R8T6',
       'STM32F103RBT6',
       'STM32F103VBT6',
       'STM32F405RGT6',
+      'STM32F407RGT6',
       'STM32F407VET6',
       'STM32F407VGT6',
-      'STM32F407ZGT6'
+      'STM32F407ZGT6',
+      'STM32L496VET6'
     ]
   );
 });
@@ -50,7 +55,7 @@ test('groups device choices by vendor and series', () => {
 
   assert.deepEqual(
     items.filter((item) => item.kind === 'separator').map((item) => item.label),
-    ['STM', 'STMF1x', 'STMF4x', 'GD', 'GDF1x', 'GDF4x']
+    ['STM', 'STMF1x', 'STMF4x', 'STML4x', 'GD', 'GDF1x', 'GDF4x']
   );
   const firstStmF1Device = items[items.findIndex((item) => item.kind === 'separator' && item.label === 'STMF1x') + 1];
   const firstStmF4Device = items[items.findIndex((item) => item.kind === 'separator' && item.label === 'STMF4x') + 1];

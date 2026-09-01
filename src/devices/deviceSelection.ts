@@ -7,6 +7,7 @@ export type DeviceSelectionItem =
 const groupOrder: Array<{ vendor: DeviceVendor; series: DeviceSeries; label: `${DeviceVendor}${DeviceSeries}` }> = [
   { vendor: 'STM', series: 'F1x', label: 'STMF1x' },
   { vendor: 'STM', series: 'F4x', label: 'STMF4x' },
+  { vendor: 'STM', series: 'L4x', label: 'STML4x' },
   { vendor: 'GD', series: 'F1x', label: 'GDF1x' },
   { vendor: 'GD', series: 'F4x', label: 'GDF4x' }
 ];

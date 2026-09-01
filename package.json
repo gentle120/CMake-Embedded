@@ -2,7 +2,7 @@
   "name": "cmake-embedded",
   "displayName": "CMake-Embedded",
   "description": "Generate a CMake build project for MCU firmware.",
-  "version": "0.0.3",
+  "version": "1.0.1",
   "publisher": "gentle120",
   "repository": {
     "type": "git",
@@ -16,11 +16,14 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:mcuCmake.generate"
+    "onCommand:mcuCmake.generate",
+    "onCommand:mcuCmake.generateFlashScript",
+    "onCommand:mcuCmake.generateDebugConfiguration"
   ],
   "extensionDependencies": [
     "ms-vscode.cmake-tools",
-    "ms-vscode.cpptools"
+    "ms-vscode.cpptools",
+    "marus25.cortex-debug"
   ],
   "main": "./out/extension.js",
   "icon": "images/icon-electric.png",
@@ -28,9 +31,32 @@
     "commands": [
       {
         "command": "mcuCmake.generate",
-        "title": "MCU CMake: Generate Project"
+        "title": "CMake-Embedded: Generate Project"
+      },
+      {
+        "command": "mcuCmake.generateFlashScript",
+        "title": "CMake-Embedded: Generate OpenOCD Flash Script"
+      },
+      {
+        "command": "mcuCmake.generateDebugConfiguration",
+        "title": "CMake-Embedded: Generate Cortex-Debug Configuration"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "CMake-Embedded",
+      "properties": {
+        "mcuCmake.openocdPath": {
+          "type": "string",
+          "default": "openocd",
+          "description": "Path to the OpenOCD executable. Use openocd when it is available in PATH."
+        },
+        "mcuCmake.armToolchainPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the ARM GNU Toolchain bin directory used by Cortex-Debug."
+        }
+      }
+    }
   },
   "scripts": {
     "compile": "tsc -p ./",

@@ -68,14 +68,19 @@ test('generated files configure and build a minimal STM32F103 firmware', async (
 test('generated files build the additional F1 and F4 package variants', async () => {
   for (const part of [
     'GD32F103CBT6',
+    'GD32F103R8T6',
     'GD32F103RBT6',
     'GD32F407VGT6',
+    'GD32F407RGT6',
     'STM32F103CBT6',
+    'STM32F103R8T6',
     'STM32F103RBT6',
     'STM32F103VBT6',
     'STM32F405RGT6',
     'STM32F407VET6',
-    'STM32F407ZGT6'
+    'STM32F407RGT6',
+    'STM32F407ZGT6',
+    'STM32L496VET6'
   ]) {
     await buildMinimalFirmware(part);
   }

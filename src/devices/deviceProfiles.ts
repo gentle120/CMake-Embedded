@@ -3,7 +3,7 @@ export interface MemoryRegion {
   length: number;
 }
 
-export type DeviceSeries = 'F1x' | 'F4x';
+export type DeviceSeries = 'F1x' | 'F4x' | 'L4x';
 export type DeviceVendor = 'STM' | 'GD';
 
 export interface AdditionalMemoryRegion {
@@ -33,8 +33,8 @@ export interface DeviceProfile {
   debugTarget?: string;
 }
 
-import { gd32Profiles } from './gd32Profiles';
-import { stm32Profiles } from './stm32Profiles';
+import { gd32Profiles } from './gd32';
+import { stm32Profiles } from './stm32';
 import { validateDeviceProfile } from './profileValidation';
 
 const allProfiles = [...gd32Profiles, ...stm32Profiles];

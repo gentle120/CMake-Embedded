@@ -57,3 +57,14 @@ test('uses the GD32F407 startup table for the GD32F4 variant', () => {
   assert.match(startup, /\.word DMA1_Channel7_IRQHandler/);
   assert.match(startup, /\.word FPU_IRQHandler/);
 });
+
+test('generates the STM32L496 L4 vector table', () => {
+  const startup = generateGnuStartup(getDeviceProfile('STM32L496VET6'));
+
+  assert.match(startup, /\.cpu cortex-m4/);
+  assert.match(startup, /\.word PVD_PVM_IRQHandler/);
+  assert.match(startup, /\.word LPUART1_IRQHandler/);
+  assert.match(startup, /\.word QUADSPI_IRQHandler/);
+  assert.match(startup, /\.word DMA2D_IRQHandler/);
+  assert.doesNotMatch(startup, /DMA1_Stream7_IRQHandler/);
+});

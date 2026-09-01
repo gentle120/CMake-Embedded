@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join, basename, relative } from 'node:path';
+import { join, basename, dirname, isAbsolute, relative } from 'node:path';
 import { getDeviceProfile, listDeviceProfiles } from './devices/deviceProfiles';
 import { buildDeviceSelectionItems } from './devices/deviceSelection';
 import { generateCMakeLists } from './generator/cmakeGenerator';
@@ -10,6 +10,10 @@ import { generateGnuStartup } from './generator/startupGenerator';
 import { generateToolchainFile } from './generator/toolchainGenerator';
 import { generateSyscalls, generateSysmem, runtimeSourceNames } from './generator/runtimeGenerator';
 import { generateProjectConfig } from './generator/configGenerator';
+import { generateFlashScript } from './generator/flashScriptGenerator';
+import { generateCortexDebugLaunchJson } from './generator/debugConfigGenerator';
+import { getFlashProbeProfile, listFlashProbeProfiles, type FlashProbeProfile } from './flash/probeProfiles';
+import { getFlashTargetProfile, listFlashTargetProfiles, type FlashTargetProfile } from './flash/targets/targetProfiles';
 import { getWorkspaceSettings } from './integration/workspaceSettings';
 import { configureCppProperties } from './integration/cppProperties';
 import { scanProject } from './scanner/projectScanner';
@@ -46,7 +50,15 @@ function projectNameFromRoot(root: string): string {
   return name || 'firmware';
 }
 
-function createGeneratedFiles(root: string, part: string, project: Awaited<ReturnType<typeof scanProject>>, files: GeneratedFile[]): GeneratedFile[] {
+function createGeneratedFiles(
+  root: string,
+  part: string,
+  project: Awaited<ReturnType<typeof scanProject>>,
+  files: GeneratedFile[],
+  flashTarget?: FlashTargetProfile,
+  flashProbe?: FlashProbeProfile,
+  openocdPath = 'openocd'
+): GeneratedFile[] {
   const profile = getDeviceProfile(part);
   const cmakeDir = join(root, 'cmake');
   const hasSource = (fileName: string): boolean => {
@@ -64,6 +76,13 @@ function createGeneratedFiles(root: string, part: string, project: Awaited<Retur
     path: join(root, profile.gnuStartupFileName),
     content: generateGnuStartup(profile)
   }];
+  const flashFiles = flashProbe
+    && flashTarget
+    ? [{
+        path: join(root, 'flash.py'),
+        content: generateFlashScript(projectNameFromRoot(root), flashTarget, flashProbe, openocdPath)
+      }]
+    : [];
   return [
     ...files,
     ...startupFiles,
@@ -80,16 +99,11 @@ function createGeneratedFiles(root: string, part: string, project: Awaited<Retur
       path: join(root, 'CMakePresets.json'),
       content: generateCMakePresets(profile.toolchainFileName)
     },
+    ...flashFiles,
   ];
 }
 
-async function generateProject(): Promise<void> {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-  if (!workspaceFolder) {
-    vscode.window.showErrorMessage('Open an MCU project folder before generating CMake.');
-    return;
-  }
-
+async function selectDeviceProfile(): Promise<ReturnType<typeof getDeviceProfile> | undefined> {
   const selection = await vscode.window.showQuickPick(
     buildDeviceSelectionItems(listDeviceProfiles()).map((item) => item.kind === 'separator'
       ? {
@@ -104,11 +118,159 @@ async function generateProject(): Promise<void> {
     { placeHolder: 'Select the MCU for this project' }
   );
   if (!selection || selection.kind === vscode.QuickPickItemKind.Separator) {
+    return undefined;
+  }
+  return getDeviceProfile(selection.label);
+}
+
+async function selectFlashProbe(): Promise<FlashProbeProfile | undefined> {
+  const selection = await vscode.window.showQuickPick(
+    listFlashProbeProfiles().map((profile) => ({
+      label: profile.label,
+      description: profile.interfaceConfig,
+      id: profile.id
+    })),
+    { placeHolder: 'Select the debug probe for OpenOCD' }
+  );
+  return selection ? getFlashProbeProfile(selection.id) : undefined;
+}
+
+async function selectFlashTarget(): Promise<FlashTargetProfile | undefined> {
+  const selection = await vscode.window.showQuickPick(
+    listFlashTargetProfiles().map((target) => ({
+      label: target.label,
+      description: `${target.vendor} / ${target.series}`,
+      detail: `${target.targetConfig} / ${target.transport}`,
+      id: target.id
+    })),
+    { placeHolder: 'Select the MCU target for OpenOCD' }
+  );
+  return selection ? getFlashTargetProfile(selection.id) : undefined;
+}
+
+async function shouldGenerateFlashScript(): Promise<boolean | undefined> {
+  const selection = await vscode.window.showQuickPick(
+    [
+      { label: 'Generate flash.py', value: true },
+      { label: 'Skip flash.py', value: false }
+    ],
+    { placeHolder: 'Generate an OpenOCD flash script too?' }
+  );
+  return selection?.value;
+}
+
+function getOpenOcdPath(): string {
+  return vscode.workspace.getConfiguration('mcuCmake').get<string>('openocdPath', 'openocd')?.trim() || 'openocd';
+}
+
+function getArmToolchainPath(): string | undefined {
+  const configuredPath = vscode.workspace.getConfiguration('mcuCmake')
+    .get<string>('armToolchainPath', '')?.trim();
+  return configuredPath || undefined;
+}
+
+async function findOpenOcdSearchDirs(openocdPath: string): Promise<string[]> {
+  if (!isAbsolute(openocdPath)) {
+    return [];
+  }
+  const prefix = dirname(dirname(openocdPath));
+  const candidates = [
+    join(prefix, 'scripts'),
+    join(prefix, 'share', 'openocd', 'scripts'),
+    join(prefix, 'openocd', 'scripts')
+  ];
+  for (const candidate of candidates) {
+    if (await exists(join(candidate, 'target'))) {
+      return [candidate];
+    }
+  }
+  return [];
+}
+
+async function generateDebugConfigurationOnly(): Promise<void> {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    vscode.window.showErrorMessage('Open an MCU project folder before generating a debug configuration.');
+    return;
+  }
+  const target = await selectFlashTarget();
+  if (!target) {
+    return;
+  }
+  const probe = await selectFlashProbe();
+  if (!probe) {
     return;
   }
 
   const root = workspaceFolder.uri.fsPath;
-  const profile = getDeviceProfile(selection.label);
+  const launchPath = join(root, '.vscode', 'launch.json');
+  const existingContent = await exists(launchPath) ? await readFile(launchPath, 'utf8') : undefined;
+  const openocdPath = getOpenOcdPath();
+  let content: string;
+  try {
+    content = generateCortexDebugLaunchJson(existingContent, {
+      openocdPath,
+      armToolchainPath: getArmToolchainPath(),
+      target,
+      probe,
+      searchDirs: await findOpenOcdSearchDirs(openocdPath)
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    vscode.window.showErrorMessage(message);
+    return;
+  }
+  await mkdir(join(root, '.vscode'), { recursive: true });
+  await writeFile(launchPath, content, 'utf8');
+  vscode.window.showInformationMessage(
+    `Generated Cortex-Debug configuration for ${target.label} with ${probe.label}.`
+  );
+}
+
+async function generateFlashScriptOnly(): Promise<void> {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    vscode.window.showErrorMessage('Open an MCU project folder before generating a flash script.');
+    return;
+  }
+  const target = await selectFlashTarget();
+  if (!target) {
+    return;
+  }
+  const probe = await selectFlashProbe();
+  if (!probe) {
+    return;
+  }
+
+  const root = workspaceFolder.uri.fsPath;
+  const flashPath = join(root, 'flash.py');
+  if (await exists(flashPath)) {
+    const action = await vscode.window.showWarningMessage(
+      'flash.py already exists. Overwrite it?',
+      'Overwrite',
+      'Cancel'
+    );
+    if (action !== 'Overwrite') {
+      return;
+    }
+  }
+  await writeFile(flashPath, generateFlashScript(projectNameFromRoot(root), target, probe, getOpenOcdPath()), 'utf8');
+  vscode.window.showInformationMessage(`Generated OpenOCD flash.py for ${target.label} with ${probe.label}.`);
+}
+
+async function generateProject(): Promise<void> {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    vscode.window.showErrorMessage('Open an MCU project folder before generating CMake.');
+    return;
+  }
+
+  const profile = await selectDeviceProfile();
+  if (!profile) {
+    return;
+  }
+
+  const root = workspaceFolder.uri.fsPath;
   const project = await scanProject(root);
   if (project.sources.length === 0) {
     vscode.window.showErrorMessage('No C/C++ or assembly source files were found in the workspace.');
@@ -120,7 +282,20 @@ async function generateProject(): Promise<void> {
     path: join(root, 'CMakeLists.txt'),
     content: generateCMakeLists(projectName, project, profile)
   }];
-  const generatedFiles = createGeneratedFiles(root, profile.part, project, initialFiles);
+  const generateFlash = await shouldGenerateFlashScript();
+  if (generateFlash === undefined) {
+    return;
+  }
+  const flashTarget = generateFlash ? await selectFlashTarget() : undefined;
+  if (generateFlash && !flashTarget) {
+    return;
+  }
+  const flashProbe = generateFlash ? await selectFlashProbe() : undefined;
+  if (generateFlash && !flashProbe) {
+    return;
+  }
+  const openocdPath = getOpenOcdPath();
+  const generatedFiles = createGeneratedFiles(root, profile.part, project, initialFiles, flashTarget, flashProbe, openocdPath);
   const configPath = join(root, '.mcu-cmake.json');
   const settingsPath = join(root, '.vscode', 'settings.json');
   const cppPropertiesPath = join(root, '.vscode', 'c_cpp_properties.json');
@@ -152,7 +327,15 @@ async function generateProject(): Promise<void> {
       projectName,
       profile,
       [...generatedFiles.map((file) => relativePath(file.path)), relativePath(settingsPath), relativePath(cppPropertiesPath)],
-      existingFiles.map(relativePath)
+      existingFiles.map(relativePath),
+      flashTarget && flashProbe ? {
+        script: 'flash.py',
+        probe: flashProbe.id,
+        interfaceConfig: flashProbe.interfaceConfig,
+        openocdPath,
+        target: flashTarget.targetConfig,
+        transport: flashTarget.transport
+      } : undefined
     )
   };
   let cppPropertiesContent: string | undefined;
@@ -177,7 +360,9 @@ async function generateProject(): Promise<void> {
 
 export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.commands.registerCommand('mcuCmake.generate', () => generateProject())
+    vscode.commands.registerCommand('mcuCmake.generate', () => generateProject()),
+    vscode.commands.registerCommand('mcuCmake.generateFlashScript', () => generateFlashScriptOnly()),
+    vscode.commands.registerCommand('mcuCmake.generateDebugConfiguration', () => generateDebugConfigurationOnly())
   );
 }
 

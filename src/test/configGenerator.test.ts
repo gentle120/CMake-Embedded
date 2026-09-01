@@ -75,3 +75,29 @@ test('records additional memory regions in the project config', () => {
     }
   ]);
 });
+
+test('records the optional OpenOCD flash configuration', () => {
+  const config = JSON.parse(generateProjectConfig(
+    'firmware',
+    getDeviceProfile('STM32F407VGT6'),
+    ['flash.py'],
+    [],
+    {
+      script: 'flash.py',
+      probe: 'stlink',
+      interfaceConfig: 'interface/stlink.cfg',
+      openocdPath: 'openocd',
+      target: 'target/stm32f4x.cfg',
+      transport: 'swd'
+    }
+  ));
+
+  assert.deepEqual(config.flash, {
+    script: 'flash.py',
+    probe: 'stlink',
+    interfaceConfig: 'interface/stlink.cfg',
+    openocdPath: 'openocd',
+    target: 'target/stm32f4x.cfg',
+    transport: 'swd'
+  });
+});

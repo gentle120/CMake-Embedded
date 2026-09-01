@@ -17,7 +17,7 @@ export function validateDeviceProfile(profile: DeviceProfile): void {
       throw new Error(`Invalid MCU profile ${profile.part}: ${String(field)} is required`);
     }
   }
-  if (!['F1x', 'F4x'].includes(profile.series)) {
+  if (!['F1x', 'F4x', 'L4x'].includes(profile.series)) {
     throw new Error(`Invalid MCU profile ${profile.part}: series is unsupported`);
   }
   if (!['STM', 'GD'].includes(profile.vendor)) {
