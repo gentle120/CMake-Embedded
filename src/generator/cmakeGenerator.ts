@@ -26,7 +26,7 @@ export function generateCMakeLists(
   const hasCxx = sources.some((source) => /\.(cc|cpp|cxx)$/i.test(source));
   const languages = hasCxx ? 'C CXX ASM' : 'C ASM';
   const defines = [...new Set([...profile.defines, ...project.defines])]
-    .filter((define) => define !== 'VECT_TAB_OFFSET')
+    .filter((define) => !['VECT_TAB_OFFSET', 'STM32_HAL_LEGACY', 'HSE_VALUE', 'LSE_VALUE'].includes(define.split('=', 1)[0]))
     .sort();
   const defineBlock = defines.map((define) => `    ${define}`).join('\n');
   const sourceBlock = sources

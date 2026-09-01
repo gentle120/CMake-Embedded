@@ -2,7 +2,7 @@
   "name": "cmake-embedded",
   "displayName": "CMake-Embedded",
   "description": "Generate a CMake build project for MCU firmware.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "gentle120",
   "repository": {
     "type": "git",

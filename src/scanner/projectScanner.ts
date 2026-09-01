@@ -26,13 +26,26 @@ const ignoredDirectories = new Set([
 
 const sourceExtensions = new Set(['.c', '.cc', '.cpp', '.cxx', '.s']);
 const headerExtensions = new Set(['.h', '.hh', '.hpp', '.hxx']);
+const protectedDefines = new Set(['USE_HAL_DRIVER']);
 
 function toProjectPath(root: string, filePath: string): string {
   return relative(root, filePath).split(sep).join('/');
 }
 
-function isRelevantDefine(name: string): boolean {
-  return !name.endsWith('_H') && /^(GD32|STM32|USE_HAL_DRIVER|HSE_VALUE|LSE_VALUE|VECT_TAB_OFFSET)/.test(name);
+function isRelevantDefine(name: string, includeGuard?: string): boolean {
+  return name !== includeGuard
+    && !name.endsWith('_H')
+    && /^(GD32|STM32|USE_HAL_DRIVER)/.test(name);
+}
+
+function findIncludeGuard(content: string): string | undefined {
+  const match = content.match(
+    /^\s*#\s*ifndef\s+([A-Za-z_][A-Za-z0-9_]*)[ \t]*(?:\/\/[^\r\n]*)?\r?\n\s*#\s*define\s+([A-Za-z_][A-Za-z0-9_]*)[ \t]*(?:\/\/[^\r\n]*)?/m
+  );
+  if (!match || match[1] !== match[2] || protectedDefines.has(match[1])) {
+    return undefined;
+  }
+  return match[1];
 }
 
 async function walk(
@@ -63,10 +76,11 @@ async function walk(
     }
 
     const content = await readFile(filePath, 'utf8');
+    const includeGuard = headerExtensions.has(extension) ? findIncludeGuard(content) : undefined;
     const definePattern = /^\s*#\s*define\s+([A-Za-z_][A-Za-z0-9_]*)\b/gm;
     for (const match of content.matchAll(definePattern)) {
       const name = match[1];
-      if (isRelevantDefine(name)) {
+      if (isRelevantDefine(name, includeGuard)) {
         defines.add(name);
       }
     }

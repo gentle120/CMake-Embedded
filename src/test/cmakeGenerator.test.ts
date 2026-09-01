@@ -68,3 +68,23 @@ test('uses the selected STM32 startup, linker, and definitions in CMake', () => 
   assert.match(cmake, /STM32F407xx/);
   assert.doesNotMatch(cmake, /GD32F10X_MD|gd32-gcc-compat|VECT_TAB_OFFSET/);
 });
+
+test('does not generate the STM32 HAL legacy or clock macros', () => {
+  const project: ProjectDescription = {
+    sources: ['Core/Src/main.c'],
+    includeDirs: ['Drivers/STM32F4xx_HAL_Driver/Inc/Legacy'],
+    defines: [
+      'STM32_HAL_LEGACY',
+      'HSE_VALUE=((uint32_t)25000000)',
+      'LSE_VALUE=32768U',
+      'USE_HAL_DRIVER'
+    ]
+  };
+
+  const cmake = generateCMakeLists('firmware', project, getDeviceProfile('STM32F407VGT6'));
+
+  assert.match(cmake, /^\s+USE_HAL_DRIVER\s*$/m);
+  assert.doesNotMatch(cmake, /^\s+STM32_HAL_LEGACY\s*$/m);
+  assert.doesNotMatch(cmake, /^\s+HSE_VALUE=.*$/m);
+  assert.doesNotMatch(cmake, /^\s+LSE_VALUE=.*$/m);
+});
