@@ -28,7 +28,7 @@ OpenOCD 烧录 target 独立选择，因此也可以给已有的自定义 CMake 
 
 ## 演示
 
-![CMake-Embedded 演示](instance.gif)
+![CMake-Embedded 演示](img/demo.png)
 
 当前芯片数据库支持常用的 STM32/GD32 F1、F4 型号和 STM32L4 型号，包括：
 `GD32F103C8T6`、`GD32F103CBT6`、`GD32F103R8T6`、`GD32F103RBT6`、

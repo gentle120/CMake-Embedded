@@ -30,7 +30,7 @@ targets use the compatible STM32 F1/F4 OpenOCD targets.
 
 ## Demo
 
-![CMake-Embedded Demo](instance.gif)
+![CMake-Embedded Demo](img/demo.png)
 
 The device database currently includes common STM32/GD32 F1 and F4 parts plus
 the STM32L4 family,
