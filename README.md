@@ -28,6 +28,10 @@ project can use a custom CMake build and still generate a flash script. The
 probe selection provides the OpenOCD interface configuration. GD32 F1/F4
 targets use the compatible STM32 F1/F4 OpenOCD targets.
 
+## Demo
+
+![CMake-Embedded Demo](instance.gif)
+
 The device database currently includes common STM32/GD32 F1 and F4 parts plus
 the STM32L4 family,
 including `GD32F103C8T6`, `GD32F103CBT6`, `GD32F103R8T6`, `GD32F103RBT6`,
