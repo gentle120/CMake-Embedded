@@ -16,6 +16,33 @@ export const gd32f1InterruptHandlers = [
   'EXMC_IRQHandler'
 ];
 
+export const gd32f1HighDensityInterruptHandlers = [
+  'WWDGT_IRQHandler', 'LVD_IRQHandler', 'TAMPER_IRQHandler', 'RTC_IRQHandler',
+  'FMC_IRQHandler', 'RCU_IRQHandler', 'EXTI0_IRQHandler', 'EXTI1_IRQHandler',
+  'EXTI2_IRQHandler', 'EXTI3_IRQHandler', 'EXTI4_IRQHandler', 'DMA0_Channel0_IRQHandler',
+  'DMA0_Channel1_IRQHandler', 'DMA0_Channel2_IRQHandler', 'DMA0_Channel3_IRQHandler',
+  'DMA0_Channel4_IRQHandler', 'DMA0_Channel5_IRQHandler', 'DMA0_Channel6_IRQHandler',
+  'ADC0_1_IRQHandler', 'USBD_HP_CAN0_TX_IRQHandler', 'USBD_LP_CAN0_RX0_IRQHandler',
+  'CAN0_RX1_IRQHandler', 'CAN0_EWMC_IRQHandler', 'EXTI5_9_IRQHandler',
+  'TIMER0_BRK_IRQHandler', 'TIMER0_UP_IRQHandler', 'TIMER0_TRG_CMT_IRQHandler',
+  'TIMER0_Channel_IRQHandler', 'TIMER1_IRQHandler', 'TIMER2_IRQHandler', 'TIMER3_IRQHandler',
+  'I2C0_EV_IRQHandler', 'I2C0_ER_IRQHandler', 'I2C1_EV_IRQHandler', 'I2C1_ER_IRQHandler',
+  'SPI0_IRQHandler', 'SPI1_IRQHandler', 'USART0_IRQHandler', 'USART1_IRQHandler',
+  'USART2_IRQHandler', 'EXTI10_15_IRQHandler', 'RTC_Alarm_IRQHandler', 'USBD_WKUP_IRQHandler',
+  'TIMER7_BRK_IRQHandler', 'TIMER7_UP_IRQHandler', 'TIMER7_TRG_CMT_IRQHandler',
+  'TIMER7_Channel_IRQHandler', 'ADC2_IRQHandler', 'EXMC_IRQHandler', 'SDIO_IRQHandler',
+  'TIMER4_IRQHandler', 'SPI2_IRQHandler', 'UART3_IRQHandler', 'UART4_IRQHandler',
+  'TIMER5_IRQHandler', 'TIMER6_IRQHandler', 'DMA1_Channel0_IRQHandler',
+  'DMA1_Channel1_IRQHandler', 'DMA1_Channel2_IRQHandler', 'DMA1_Channel3_4_IRQHandler'
+];
+
+interface Gd32F1ProfileOptions {
+  define?: string;
+  ramLength?: number;
+  gnuStartupFileName?: string;
+  interruptHandlers?: string[];
+}
+
 export const gd32f4InterruptHandlers = [
   'WWDGT_IRQHandler', 'LVD_IRQHandler', 'TAMPER_STAMP_IRQHandler', 'RTC_WKUP_IRQHandler',
   'FMC_IRQHandler', 'RCU_CTC_IRQHandler', 'EXTI0_IRQHandler', 'EXTI1_IRQHandler',
@@ -46,7 +73,8 @@ export const gd32f4InterruptHandlers = [
 export function createGd32F1Profile(
   part: string,
   flashLength: number,
-  linkerFileName: string
+  linkerFileName: string,
+  options: Gd32F1ProfileOptions = {}
 ): DeviceProfile {
   return {
     part,
@@ -56,14 +84,14 @@ export function createGd32F1Profile(
     core: 'cortex-m3',
     architecture: 'arm',
     toolchainPrefix: 'arm-none-eabi',
-    defines: ['GD32F10X_MD'],
+    defines: [options.define ?? 'GD32F10X_MD'],
     compilerFlags: ['-mcpu=cortex-m3', '-mthumb'],
     flash: { origin: 0x08000000, length: flashLength },
-    ram: { origin: 0x20000000, length: 20 * 1024 },
+    ram: { origin: 0x20000000, length: options.ramLength ?? 20 * 1024 },
     linkerFileName,
-    gnuStartupFileName: 'startup_gd32f10x_md.S',
+    gnuStartupFileName: options.gnuStartupFileName ?? 'startup_gd32f10x_md.S',
     toolchainFileName: 'gd32-toolchain.cmake',
-    interruptHandlers: [...gd32f1InterruptHandlers],
+    interruptHandlers: [...(options.interruptHandlers ?? gd32f1InterruptHandlers)],
     debugTarget: 'stm32f1x'
   };
 }

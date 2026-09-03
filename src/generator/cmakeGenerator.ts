@@ -10,10 +10,72 @@ function projectPath(value: string): string {
   return `"\${MCU_PROJECT_ROOT}/${cmakePath(value)}"`;
 }
 
+const userCodeBeginMarker = '# CMAKE-EMBEDDED USER CODE BEGIN';
+const userCodeEndMarker = '# CMAKE-EMBEDDED USER CODE END';
+const previousEmptyUserCodeSection = `${userCodeBeginMarker}
+# Add custom compiler definitions, include directories, source files,
+# assembly files, library search paths, static library files, and libraries here.
+# This section is preserved when CMakeLists.txt is generated again.
+
+${userCodeEndMarker}`;
+
+function userCodeSection(projectName: string): string {
+  return `${userCodeBeginMarker}
+# Add user-defined library search paths.
+target_link_directories(\${CMAKE_PROJECT_NAME} PRIVATE
+)
+
+# Add user source and assembly files.
+target_sources(\${CMAKE_PROJECT_NAME} PRIVATE
+)
+
+# Add user-defined include paths.
+target_include_directories(\${CMAKE_PROJECT_NAME} PRIVATE
+)
+
+# Add user-defined compiler definitions.
+target_compile_definitions(\${CMAKE_PROJECT_NAME} PRIVATE
+)
+
+# Add user-defined libraries or library files.
+target_link_libraries(\${CMAKE_PROJECT_NAME} PRIVATE
+)
+
+# This section is preserved when CMakeLists.txt is generated again.
+
+${userCodeEndMarker}`;
+}
+
+function preserveUserCodeSection(existingContent: string | undefined, generatedContent: string): string {
+  if (!existingContent) {
+    return generatedContent;
+  }
+
+  const existingBegin = existingContent.indexOf(userCodeBeginMarker);
+  const existingEnd = existingContent.indexOf(userCodeEndMarker);
+  if (existingBegin < 0 || existingEnd < existingBegin) {
+    return generatedContent;
+  }
+
+  const generatedBegin = generatedContent.indexOf(userCodeBeginMarker);
+  const generatedEnd = generatedContent.indexOf(userCodeEndMarker);
+  if (generatedBegin < 0 || generatedEnd < generatedBegin) {
+    throw new Error('Generated CMakeLists.txt is missing the user code section markers.');
+  }
+
+  const existingSection = existingContent.slice(existingBegin, existingEnd + userCodeEndMarker.length);
+  const generatedSection = generatedContent.slice(generatedBegin, generatedEnd + userCodeEndMarker.length);
+  if (existingSection.replace(/\r\n/g, '\n') === previousEmptyUserCodeSection) {
+    return `${generatedContent.slice(0, generatedBegin)}${generatedSection}${generatedContent.slice(generatedEnd + userCodeEndMarker.length)}`;
+  }
+  return `${generatedContent.slice(0, generatedBegin)}${existingSection}${generatedContent.slice(generatedEnd + userCodeEndMarker.length)}`;
+}
+
 export function generateCMakeLists(
   projectName: string,
   project: ProjectDescription,
-  profile: DeviceProfile
+  profile: DeviceProfile,
+  existingContent?: string
 ): string {
   const sources = project.sources.filter((source) => !/\.s$/i.test(source));
   sources.push(profile.gnuStartupFileName);
@@ -36,7 +98,7 @@ export function generateCMakeLists(
     ? `    ${projectPath('.')}`
     : project.includeDirs.map((directory) => `    ${projectPath(directory)}`).join('\n');
 
-  return `cmake_minimum_required(VERSION 3.22)
+  const generated = `cmake_minimum_required(VERSION 3.22)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -72,6 +134,8 @@ target_compile_definitions(${projectName} PRIVATE
 ${defineBlock}
 )
 
+${userCodeSection(projectName)}
+
 set_target_properties(${projectName} PROPERTIES
     ADDITIONAL_CLEAN_FILES "\${CMAKE_BINARY_DIR}/${projectName}.map"
 )
@@ -82,4 +146,6 @@ add_custom_command(TARGET ${projectName} POST_BUILD
     COMMAND \${CMAKE_SIZE} \$<TARGET_FILE:${projectName}>
 )
 `;
+
+  return preserveUserCodeSection(existingContent, generated);
 }

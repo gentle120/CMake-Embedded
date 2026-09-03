@@ -88,3 +88,88 @@ test('does not generate the STM32 HAL legacy or clock macros', () => {
   assert.doesNotMatch(cmake, /^\s+HSE_VALUE=.*$/m);
   assert.doesNotMatch(cmake, /^\s+LSE_VALUE=.*$/m);
 });
+
+test('generates an English documented user code section for custom CMake settings', () => {
+  const project: ProjectDescription = {
+    sources: ['main.c'],
+    includeDirs: [],
+    defines: []
+  };
+
+  const cmake = generateCMakeLists('firmware', project, getDeviceProfile('STM32L496VET6'));
+
+  assert.match(cmake, /# CMAKE-EMBEDDED USER CODE BEGIN/);
+  assert.match(cmake, /# Add user-defined library search paths[\s\S]*target_link_directories\(\$\{CMAKE_PROJECT_NAME\} PRIVATE[\s\S]*\)/);
+  assert.match(cmake, /# Add user source and assembly files[\s\S]*target_sources\(\$\{CMAKE_PROJECT_NAME\} PRIVATE[\s\S]*\)/);
+  assert.match(cmake, /# Add user-defined include paths[\s\S]*target_include_directories\(\$\{CMAKE_PROJECT_NAME\} PRIVATE[\s\S]*\)/);
+  assert.match(cmake, /# Add user-defined compiler definitions[\s\S]*target_compile_definitions\(\$\{CMAKE_PROJECT_NAME\} PRIVATE[\s\S]*\)/);
+  assert.match(cmake, /# Add user-defined libraries or library files[\s\S]*target_link_libraries\(\$\{CMAKE_PROJECT_NAME\} PRIVATE[\s\S]*\)/);
+  assert.match(cmake, /# This section is preserved when CMakeLists\.txt is generated again\./);
+  assert.match(cmake, /# CMAKE-EMBEDDED USER CODE END/);
+  const userSection = cmake.match(
+    /# CMAKE-EMBEDDED USER CODE BEGIN[\s\S]*?# CMAKE-EMBEDDED USER CODE END/
+  )?.[0];
+  assert.ok(userSection);
+  assert.doesNotMatch(userSection, /(?:MCU_PROJECT_ROOT|USER_FEATURE|custom\.c|custom\.S|libcustom\.a|custom_math)/);
+});
+
+test('preserves the user code section when regenerating CMakeLists.txt', () => {
+  const project: ProjectDescription = {
+    sources: ['main.c'],
+    includeDirs: [],
+    defines: []
+  };
+  const profile = getDeviceProfile('STM32L496VET6');
+  const initial = generateCMakeLists('firmware', project, profile);
+  const userSection = `# CMAKE-EMBEDDED USER CODE BEGIN
+target_compile_definitions(firmware PRIVATE USER_FEATURE=1)
+target_sources(firmware PRIVATE \${MCU_PROJECT_ROOT}/User/custom.S \${MCU_PROJECT_ROOT}/User/custom.c)
+target_link_libraries(firmware PRIVATE \${MCU_PROJECT_ROOT}/libs/libcustom.a custom_math)
+# Keep this comment and formatting.
+# CMAKE-EMBEDDED USER CODE END`;
+  const edited = initial.replace(
+    /# CMAKE-EMBEDDED USER CODE BEGIN[\s\S]*?# CMAKE-EMBEDDED USER CODE END/,
+    userSection
+  );
+
+  const regenerated = generateCMakeLists('firmware', project, profile, edited);
+
+  assert.match(regenerated, /USER_FEATURE=1/);
+  assert.match(regenerated, /User\/custom\.S/);
+  assert.match(regenerated, /User\/custom\.c/);
+  assert.match(regenerated, /libs\/libcustom\.a/);
+  assert.match(regenerated, /custom_math/);
+  assert.match(regenerated, /# Keep this comment and formatting\./);
+  assert.equal(
+    regenerated.match(/# CMAKE-EMBEDDED USER CODE BEGIN[\s\S]*?# CMAKE-EMBEDDED USER CODE END/)?.[0],
+    userSection
+  );
+});
+
+test('upgrades the previous empty user code section to active CMake blocks', () => {
+  const project: ProjectDescription = {
+    sources: ['main.c'],
+    includeDirs: [],
+    defines: []
+  };
+  const profile = getDeviceProfile('GD32F103C8T6');
+  const initial = generateCMakeLists('firmware', project, profile);
+  const previousEmptySection = `# CMAKE-EMBEDDED USER CODE BEGIN
+# Add custom compiler definitions, include directories, source files,
+# assembly files, library search paths, static library files, and libraries here.
+# This section is preserved when CMakeLists.txt is generated again.
+
+# CMAKE-EMBEDDED USER CODE END`;
+  const edited = initial.replace(
+    /# CMAKE-EMBEDDED USER CODE BEGIN[\s\S]*?# CMAKE-EMBEDDED USER CODE END/,
+    previousEmptySection
+  );
+
+  const regenerated = generateCMakeLists('firmware', project, profile, edited);
+
+  assert.match(regenerated, /target_link_directories\(\$\{CMAKE_PROJECT_NAME\} PRIVATE/);
+  assert.match(regenerated, /target_sources\(\$\{CMAKE_PROJECT_NAME\} PRIVATE/);
+  assert.match(regenerated, /target_include_directories\(\$\{CMAKE_PROJECT_NAME\} PRIVATE/);
+  assert.match(regenerated, /target_compile_definitions\(\$\{CMAKE_PROJECT_NAME\} PRIVATE/);
+  assert.match(regenerated, /target_link_libraries\(\$\{CMAKE_PROJECT_NAME\} PRIVATE/);
+});

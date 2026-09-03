@@ -54,3 +54,26 @@ test('generates explicit TCMSRAM for GD32F407', () => {
   assert.match(linker, /RAM \(rw\).*LENGTH = 192K/s);
   assert.match(linker, /TCMSRAM \(rwx\).*LENGTH = 64K/s);
 });
+
+test('generates high-density STM32F1 memory regions', () => {
+  const linker = generateLinkerScript(getDeviceProfile('STM32F103ZET6'));
+
+  assert.match(linker, /FLASH \(rx\).*LENGTH = 512K/s);
+  assert.match(linker, /RAM \(rw\).*LENGTH = 64K/s);
+});
+
+test('generates the STM32F429 memory regions', () => {
+  const linker = generateLinkerScript(getDeviceProfile('STM32F429ZIT6'));
+
+  assert.match(linker, /FLASH \(rx\).*LENGTH = 2048K/s);
+  assert.match(linker, /RAM \(rw\).*LENGTH = 192K/s);
+  assert.match(linker, /CCMRAM \(rw\).*LENGTH = 64K/s);
+});
+
+test('generates the STM32L476 memory regions', () => {
+  const linker = generateLinkerScript(getDeviceProfile('STM32L476RGT6'));
+
+  assert.match(linker, /FLASH \(rx\).*LENGTH = 1024K/s);
+  assert.match(linker, /RAM \(rw\).*LENGTH = 96K/s);
+  assert.match(linker, /RAM2 \(rw\).*LENGTH = 32K/s);
+});

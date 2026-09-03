@@ -58,6 +58,32 @@ test('uses the GD32F407 startup table for the GD32F4 variant', () => {
   assert.match(startup, /\.word FPU_IRQHandler/);
 });
 
+test('generates the STM32F1 high-density vector table', () => {
+  const startup = generateGnuStartup(getDeviceProfile('STM32F103RCT6'));
+
+  assert.match(startup, /\.word DMA2_Channel4_5_IRQHandler/);
+  assert.match(startup, /\.weak FSMC_IRQHandler/);
+  assert.doesNotMatch(startup, /PVD_PVM_IRQHandler|DMA0_Channel0_IRQHandler/);
+});
+
+test('generates the GD32F1 high-density vector table', () => {
+  const startup = generateGnuStartup(getDeviceProfile('GD32F103RCT6'));
+
+  assert.match(startup, /\.word DMA1_Channel3_4_IRQHandler/);
+  assert.match(startup, /\.weak ADC2_IRQHandler/);
+  assert.doesNotMatch(startup, /DMA1_Channel7_IRQHandler|PVD_IRQHandler/);
+});
+
+test('generates the STM32F429 extended vector table', () => {
+  const startup = generateGnuStartup(getDeviceProfile('STM32F429ZIT6'));
+
+  assert.match(startup, /\.word LTDC_IRQHandler/);
+  assert.match(startup, /\.word LTDC_ER_IRQHandler/);
+  assert.match(startup, /\.word DMA2D_IRQHandler/);
+  assert.doesNotMatch(startup, /\.weak 0/);
+  assert.doesNotMatch(startup, /RCU_IRQHandler|USBFS_IRQHandler/);
+});
+
 test('generates the STM32L496 L4 vector table', () => {
   const startup = generateGnuStartup(getDeviceProfile('STM32L496VET6'));
 
@@ -67,4 +93,12 @@ test('generates the STM32L496 L4 vector table', () => {
   assert.match(startup, /\.word QUADSPI_IRQHandler/);
   assert.match(startup, /\.word DMA2D_IRQHandler/);
   assert.doesNotMatch(startup, /DMA1_Stream7_IRQHandler/);
+});
+
+test('generates the STM32L476 vector table without L496-only handlers', () => {
+  const startup = generateGnuStartup(getDeviceProfile('STM32L476RGT6'));
+
+  assert.match(startup, /\.word LPUART1_IRQHandler/);
+  assert.match(startup, /\.word FPU_IRQHandler/);
+  assert.doesNotMatch(startup, /DMA2D_IRQHandler|CAN2_TX_IRQHandler/);
 });

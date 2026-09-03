@@ -29,6 +29,7 @@ export function generateGnuStartup(profile: DeviceProfile): string {
   ];
   const vectorLines = vectors.map((handler) => `  .word ${handler}`).join('\n');
   const aliases = [...coreHandlers, ...profile.interruptHandlers]
+    .filter((handler) => handler !== '0')
     .map((handler) => `.weak ${handler}\n.thumb_set ${handler}, Default_Handler`)
     .join('\n');
 

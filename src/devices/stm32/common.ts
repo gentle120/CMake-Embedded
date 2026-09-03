@@ -15,6 +15,15 @@ export const stm32f1InterruptHandlers = [
   'USART3_IRQHandler', 'EXTI15_10_IRQHandler', 'RTCAlarm_IRQHandler', 'USBWakeUp_IRQHandler'
 ];
 
+export const stm32f1HighDensityInterruptHandlers = [
+  ...stm32f1InterruptHandlers,
+  'TIM8_BRK_IRQHandler', 'TIM8_UP_IRQHandler', 'TIM8_TRG_COM_IRQHandler',
+  'TIM8_CC_IRQHandler', 'ADC3_IRQHandler', 'FSMC_IRQHandler', 'SDIO_IRQHandler',
+  'TIM5_IRQHandler', 'SPI3_IRQHandler', 'UART4_IRQHandler', 'UART5_IRQHandler',
+  'TIM6_IRQHandler', 'TIM7_IRQHandler', 'DMA2_Channel1_IRQHandler',
+  'DMA2_Channel2_IRQHandler', 'DMA2_Channel3_IRQHandler', 'DMA2_Channel4_5_IRQHandler'
+];
+
 export const stm32f4InterruptHandlers = [
   'WWDG_IRQHandler', 'PVD_IRQHandler', 'TAMP_STAMP_IRQHandler', 'RTC_WKUP_IRQHandler',
   'FLASH_IRQHandler', 'RCC_IRQHandler', 'EXTI0_IRQHandler', 'EXTI1_IRQHandler',
@@ -41,6 +50,14 @@ export const stm32f4InterruptHandlers = [
   'DCMI_IRQHandler', 'HASH_RNG_IRQHandler', 'FPU_IRQHandler'
 ];
 
+export const stm32f4ExtendedInterruptHandlers = [
+  ...stm32f4InterruptHandlers.slice(0, -3),
+  'DCMI_IRQHandler', '0', 'HASH_RNG_IRQHandler', 'FPU_IRQHandler',
+  'UART7_IRQHandler', 'UART8_IRQHandler', 'SPI4_IRQHandler', 'SPI5_IRQHandler',
+  'SPI6_IRQHandler', 'SAI1_IRQHandler', 'LTDC_IRQHandler', 'LTDC_ER_IRQHandler',
+  'DMA2D_IRQHandler'
+];
+
 export const stm32l4InterruptHandlers = [
   'WWDG_IRQHandler', 'PVD_PVM_IRQHandler', 'TAMP_STAMP_IRQHandler', 'RTC_WKUP_IRQHandler',
   'FLASH_IRQHandler', 'RCC_IRQHandler', 'EXTI0_IRQHandler', 'EXTI1_IRQHandler',
@@ -63,15 +80,43 @@ export const stm32l4InterruptHandlers = [
   'LPTIM2_IRQHandler', 'OTG_FS_IRQHandler', 'DMA2_Channel6_IRQHandler', 'DMA2_Channel7_IRQHandler',
   'LPUART1_IRQHandler', 'QUADSPI_IRQHandler', 'I2C3_EV_IRQHandler', 'I2C3_ER_IRQHandler',
   'SAI1_IRQHandler', 'SAI2_IRQHandler', 'SWPMI1_IRQHandler', 'TSC_IRQHandler', 'LCD_IRQHandler',
-  'RNG_IRQHandler', 'FPU_IRQHandler', 'CRS_IRQHandler', 'I2C4_EV_IRQHandler', 'I2C4_ER_IRQHandler',
+  '0', 'RNG_IRQHandler', 'FPU_IRQHandler', 'CRS_IRQHandler', 'I2C4_EV_IRQHandler', 'I2C4_ER_IRQHandler',
   'DCMI_IRQHandler', 'CAN2_TX_IRQHandler', 'CAN2_RX0_IRQHandler', 'CAN2_RX1_IRQHandler',
   'CAN2_SCE_IRQHandler', 'DMA2D_IRQHandler'
 ];
 
+export const stm32l4ShortInterruptHandlers = [
+  ...stm32l4InterruptHandlers.slice(0, stm32l4InterruptHandlers.indexOf('CRS_IRQHandler'))
+];
+
+interface Stm32F1ProfileOptions {
+  define?: string;
+  ramLength?: number;
+  gnuStartupFileName?: string;
+  interruptHandlers?: string[];
+}
+
+interface Stm32F4ProfileOptions {
+  ramLength?: number;
+  gnuStartupFileName?: string;
+  interruptHandlers?: string[];
+  additionalMemory?: DeviceProfile['additionalMemory'];
+}
+
+interface Stm32L4ProfileOptions {
+  define?: string;
+  flashLength?: number;
+  ramLength?: number;
+  additionalMemory?: DeviceProfile['additionalMemory'];
+  gnuStartupFileName?: string;
+  interruptHandlers?: string[];
+}
+
 export function createStm32F1Profile(
   part: string,
   flashLength: number,
-  linkerFileName: string
+  linkerFileName: string,
+  options: Stm32F1ProfileOptions = {}
 ): DeviceProfile {
   return {
     part,
@@ -81,14 +126,14 @@ export function createStm32F1Profile(
     core: 'cortex-m3',
     architecture: 'arm',
     toolchainPrefix: 'arm-none-eabi',
-    defines: ['STM32F103xB'],
+    defines: [options.define ?? 'STM32F103xB'],
     compilerFlags: ['-mcpu=cortex-m3', '-mthumb'],
     flash: { origin: 0x08000000, length: flashLength },
-    ram: { origin: 0x20000000, length: 20 * 1024 },
+    ram: { origin: 0x20000000, length: options.ramLength ?? 20 * 1024 },
     linkerFileName,
-    gnuStartupFileName: 'startup_stm32f103xb.S',
+    gnuStartupFileName: options.gnuStartupFileName ?? 'startup_stm32f103xb.S',
     toolchainFileName: 'stm32f1-toolchain.cmake',
-    interruptHandlers: [...stm32f1InterruptHandlers],
+    interruptHandlers: [...(options.interruptHandlers ?? stm32f1InterruptHandlers)],
     debugTarget: 'stm32f1x'
   };
 }
@@ -97,7 +142,8 @@ export function createStm32F4Profile(
   part: string,
   flashLength: number,
   linkerFileName: string,
-  define: string
+  define: string,
+  options: Stm32F4ProfileOptions = {}
 ): DeviceProfile {
   return {
     part,
@@ -110,17 +156,23 @@ export function createStm32F4Profile(
     defines: [define],
     compilerFlags: ['-mcpu=cortex-m4', '-mthumb', '-mfpu=fpv4-sp-d16', '-mfloat-abi=hard'],
     flash: { origin: 0x08000000, length: flashLength },
-    ram: { origin: 0x20000000, length: 128 * 1024 },
-    additionalMemory: [{ name: 'CCMRAM', attributes: 'rw', origin: 0x10000000, length: 64 * 1024 }],
+    ram: { origin: 0x20000000, length: options.ramLength ?? 128 * 1024 },
+    additionalMemory: options.additionalMemory ?? [
+      { name: 'CCMRAM', attributes: 'rw', origin: 0x10000000, length: 64 * 1024 }
+    ],
     linkerFileName,
-    gnuStartupFileName: 'startup_stm32f407xx.S',
+    gnuStartupFileName: options.gnuStartupFileName ?? 'startup_stm32f407xx.S',
     toolchainFileName: 'stm32f4-toolchain.cmake',
-    interruptHandlers: [...stm32f4InterruptHandlers],
+    interruptHandlers: [...(options.interruptHandlers ?? stm32f4InterruptHandlers)],
     debugTarget: 'stm32f4x'
   };
 }
 
-export function createStm32L4Profile(part: string, linkerFileName: string): DeviceProfile {
+export function createStm32L4Profile(
+  part: string,
+  linkerFileName: string,
+  options: Stm32L4ProfileOptions = {}
+): DeviceProfile {
   return {
     part,
     vendor: 'STM',
@@ -129,15 +181,17 @@ export function createStm32L4Profile(part: string, linkerFileName: string): Devi
     core: 'cortex-m4',
     architecture: 'arm',
     toolchainPrefix: 'arm-none-eabi',
-    defines: ['STM32L496xx'],
+    defines: [options.define ?? 'STM32L496xx'],
     compilerFlags: ['-mcpu=cortex-m4', '-mthumb', '-mfpu=fpv4-sp-d16', '-mfloat-abi=hard'],
-    flash: { origin: 0x08000000, length: 512 * 1024 },
-    ram: { origin: 0x20000000, length: 256 * 1024 },
-    additionalMemory: [{ name: 'RAM2', attributes: 'rw', origin: 0x10000000, length: 64 * 1024 }],
+    flash: { origin: 0x08000000, length: options.flashLength ?? 512 * 1024 },
+    ram: { origin: 0x20000000, length: options.ramLength ?? 256 * 1024 },
+    additionalMemory: options.additionalMemory ?? [
+      { name: 'RAM2', attributes: 'rw', origin: 0x10000000, length: 64 * 1024 }
+    ],
     linkerFileName,
-    gnuStartupFileName: 'startup_stm32l496xx.S',
+    gnuStartupFileName: options.gnuStartupFileName ?? 'startup_stm32l496xx.S',
     toolchainFileName: 'stm32l4-toolchain.cmake',
-    interruptHandlers: [...stm32l4InterruptHandlers],
+    interruptHandlers: [...(options.interruptHandlers ?? stm32l4InterruptHandlers)],
     debugTarget: 'stm32l4x'
   };
 }

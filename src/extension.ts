@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, basename, dirname, isAbsolute, relative } from 'node:path';
-import { getDeviceProfile, listDeviceProfiles } from './devices/deviceProfiles';
-import { buildDeviceSelectionItems } from './devices/deviceSelection';
+import { getDeviceProfile, listDeviceProfiles, type DeviceSeries, type DeviceVendor } from './devices/deviceProfiles';
+import { listDeviceProfilesForSeries, listDeviceSeries, listDeviceVendors } from './devices/deviceSelection';
 import { generateCMakeLists } from './generator/cmakeGenerator';
 import { generateLinkerScript } from './generator/linkerGenerator';
 import { generateCMakePresets } from './generator/presetsGenerator';
@@ -13,7 +13,15 @@ import { generateProjectConfig } from './generator/configGenerator';
 import { generateFlashScript } from './generator/flashScriptGenerator';
 import { generateCortexDebugLaunchJson } from './generator/debugConfigGenerator';
 import { getFlashProbeProfile, listFlashProbeProfiles, type FlashProbeProfile } from './flash/probeProfiles';
-import { getFlashTargetProfile, listFlashTargetProfiles, type FlashTargetProfile } from './flash/targets/targetProfiles';
+import {
+  getFlashTargetProfile,
+  getFlashTargetProfileForDevice,
+  listFlashTargetSeries,
+  listFlashTargetProfiles,
+  listFlashTargetVendors,
+  listFlashTargetsForSeries,
+  type FlashTargetProfile
+} from './flash/targets/targetProfiles';
 import { getWorkspaceSettings } from './integration/workspaceSettings';
 import { configureCppProperties } from './integration/cppProperties';
 import { scanProject } from './scanner/projectScanner';
@@ -104,23 +112,46 @@ function createGeneratedFiles(
 }
 
 async function selectDeviceProfile(): Promise<ReturnType<typeof getDeviceProfile> | undefined> {
-  const selection = await vscode.window.showQuickPick(
-    buildDeviceSelectionItems(listDeviceProfiles()).map((item) => item.kind === 'separator'
-      ? {
-          label: item.label,
-          kind: vscode.QuickPickItemKind.Separator
-        }
-      : {
-          label: item.profile.part,
-          description: `${item.profile.family} / ${item.profile.core}`,
-          detail: `${item.profile.flash.length / 1024} KB Flash, ${item.profile.ram.length / 1024} KB RAM`
-        }),
-    { placeHolder: 'Select the MCU for this project' }
+  const profiles = listDeviceProfiles();
+  const vendorSelection = await vscode.window.showQuickPick(
+    listDeviceVendors(profiles).map((vendor) => ({
+      label: vendor === 'STM' ? 'STM32' : 'GD32',
+      description: `${profiles.filter((profile) => profile.vendor === vendor).length} supported device(s)`,
+      vendor
+    })),
+    { placeHolder: 'Select MCU vendor' }
   );
-  if (!selection || selection.kind === vscode.QuickPickItemKind.Separator) {
+  if (!vendorSelection) {
     return undefined;
   }
-  return getDeviceProfile(selection.label);
+
+  const vendor = vendorSelection.vendor as DeviceVendor;
+  const seriesSelection = await vscode.window.showQuickPick(
+    listDeviceSeries(profiles, vendor).map((series) => {
+      const seriesProfiles = listDeviceProfilesForSeries(profiles, vendor, series);
+      return {
+        label: seriesProfiles[0]?.family ?? series,
+        description: `${seriesProfiles.length} supported device(s)`,
+        detail: `${seriesProfiles[0]?.core ?? 'ARM'} MCU family`,
+        series
+      };
+    }),
+    { placeHolder: `Select MCU series (${vendorSelection.label})` }
+  );
+  if (!seriesSelection) {
+    return undefined;
+  }
+
+  const series = seriesSelection.series as DeviceSeries;
+  const deviceSelection = await vscode.window.showQuickPick(
+    listDeviceProfilesForSeries(profiles, vendor, series).map((profile) => ({
+      label: profile.part,
+      description: `${profile.family} / ${profile.core}`,
+      detail: `${profile.flash.length / 1024} KB Flash, ${profile.ram.length / 1024} KB RAM`
+    })),
+    { placeHolder: `Select MCU model (${seriesSelection.label})` }
+  );
+  return deviceSelection ? getDeviceProfile(deviceSelection.label) : undefined;
 }
 
 async function selectFlashProbe(): Promise<FlashProbeProfile | undefined> {
@@ -136,16 +167,44 @@ async function selectFlashProbe(): Promise<FlashProbeProfile | undefined> {
 }
 
 async function selectFlashTarget(): Promise<FlashTargetProfile | undefined> {
-  const selection = await vscode.window.showQuickPick(
-    listFlashTargetProfiles().map((target) => ({
+  const targets = listFlashTargetProfiles();
+  const vendorSelection = await vscode.window.showQuickPick(
+    listFlashTargetVendors().map((vendor) => ({
+      label: vendor,
+      description: `${targets.filter((target) => target.vendor === vendor).length} OpenOCD target(s)`,
+      vendor
+    })),
+    { placeHolder: 'Select OpenOCD target vendor' }
+  );
+  if (!vendorSelection) {
+    return undefined;
+  }
+
+  const seriesSelection = await vscode.window.showQuickPick(
+    listFlashTargetSeries(vendorSelection.vendor).map((series) => {
+      const seriesTargets = listFlashTargetsForSeries(vendorSelection.vendor, series);
+      return {
+        label: seriesTargets[0]?.label ?? series,
+        description: `${seriesTargets.length} OpenOCD target(s)`,
+        series
+      };
+    }),
+    { placeHolder: `Select OpenOCD target series (${vendorSelection.label})` }
+  );
+  if (!seriesSelection) {
+    return undefined;
+  }
+
+  const targetSelection = await vscode.window.showQuickPick(
+    listFlashTargetsForSeries(vendorSelection.vendor, seriesSelection.series).map((target) => ({
       label: target.label,
       description: `${target.vendor} / ${target.series}`,
       detail: `${target.targetConfig} / ${target.transport}`,
       id: target.id
     })),
-    { placeHolder: 'Select the MCU target for OpenOCD' }
+    { placeHolder: `Select OpenOCD target (${seriesSelection.label})` }
   );
-  return selection ? getFlashTargetProfile(selection.id) : undefined;
+  return targetSelection ? getFlashTargetProfile(targetSelection.id) : undefined;
 }
 
 async function shouldGenerateFlashScript(): Promise<boolean | undefined> {
@@ -278,18 +337,19 @@ async function generateProject(): Promise<void> {
   }
 
   const projectName = projectNameFromRoot(root);
+  const cmakePath = join(root, 'CMakeLists.txt');
+  const existingCMakeContent = await exists(cmakePath)
+    ? await readFile(cmakePath, 'utf8')
+    : undefined;
   const initialFiles: GeneratedFile[] = [{
-    path: join(root, 'CMakeLists.txt'),
-    content: generateCMakeLists(projectName, project, profile)
+    path: cmakePath,
+    content: generateCMakeLists(projectName, project, profile, existingCMakeContent)
   }];
   const generateFlash = await shouldGenerateFlashScript();
   if (generateFlash === undefined) {
     return;
   }
-  const flashTarget = generateFlash ? await selectFlashTarget() : undefined;
-  if (generateFlash && !flashTarget) {
-    return;
-  }
+  const flashTarget = generateFlash ? getFlashTargetProfileForDevice(profile) : undefined;
   const flashProbe = generateFlash ? await selectFlashProbe() : undefined;
   if (generateFlash && !flashProbe) {
     return;

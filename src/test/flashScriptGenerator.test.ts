@@ -3,7 +3,14 @@ import { spawn } from 'node:child_process';
 import test from 'node:test';
 import { getDeviceProfile } from '../devices/deviceProfiles';
 import { getFlashProbeProfile, listFlashProbeProfiles } from '../flash/probeProfiles';
-import { getFlashTargetProfile, listFlashTargetProfiles } from '../flash/targets/targetProfiles';
+import {
+  getFlashTargetProfile,
+  getFlashTargetProfileForDevice,
+  listFlashTargetProfiles,
+  listFlashTargetSeries,
+  listFlashTargetVendors,
+  listFlashTargetsForSeries
+} from '../flash/targets/targetProfiles';
 import { generateFlashScript } from '../generator/flashScriptGenerator';
 
 function assertPythonSyntax(script: string): Promise<void> {
@@ -53,6 +60,26 @@ test('keeps the flash target database independent from build profiles', () => {
   assert.equal(getFlashTargetProfile('gd32f1xx').targetConfig, 'target/stm32f1x.cfg');
   assert.equal(getFlashTargetProfile('gd32f4xx').targetConfig, 'target/stm32f4x.cfg');
   assert.equal(getFlashTargetProfile('gd32e23x').targetConfig, 'target/gd32e23x.cfg');
+});
+
+test('maps a selected build device to its OpenOCD target for one-click generation', () => {
+  assert.equal(
+    getFlashTargetProfileForDevice(getDeviceProfile('GD32F103C8T6')).id,
+    'gd32f1xx'
+  );
+  assert.equal(
+    getFlashTargetProfileForDevice(getDeviceProfile('STM32L496VET6')).id,
+    'stm32l4xx'
+  );
+});
+
+test('builds progressive OpenOCD vendor, series, and target choices', () => {
+  assert.deepEqual(listFlashTargetVendors(), ['STM32', 'GD32']);
+  assert.deepEqual(listFlashTargetSeries('STM32').slice(0, 3), ['F0xx', 'F1xx', 'F2xx']);
+  assert.deepEqual(
+    listFlashTargetsForSeries('GD32', 'F1xx').map((target) => target.label),
+    ['GD32F1xx']
+  );
 });
 
 test('generates an OpenOCD flash script with the selected chip and probe', async () => {
