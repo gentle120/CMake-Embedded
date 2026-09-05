@@ -34,11 +34,7 @@ targets use the compatible STM32 F1/F4 OpenOCD targets.
 
 The device database currently includes common STM32/GD32 F1 and F4 parts plus
 the STM32L4 family,
-including `GD32F103C8T6`, `GD32F103CBT6`, `GD32F103R8T6`, `GD32F103RBT6`,
-`GD32F407RGT6`, `GD32F407VGT6`, `GD32F450VGT6`, `STM32F103C8T6`,
-`STM32F103CBT6`, `STM32F103R8T6`, `STM32F103RBT6`, `STM32F103VBT6`,
-`STM32F405RGT6`, `STM32F407RGT6`, `STM32F407VET6`, `STM32F407VGT6`,
-`STM32F407ZGT6`, and `STM32L496VET6`.
+including `STM32` and `GD32` series. 
 
 The device picker groups them by vendor first (`STM` or `GD`), then by series
 (`STMF1x`, `STMF4x`, `STML4x`, `GDF1x`, or `GDF4x`).
