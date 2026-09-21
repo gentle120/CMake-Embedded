@@ -11,7 +11,10 @@ test('generates a GNU assembler startup file for GD32F103C8T6', () => {
   assert.match(startup, /\.global Reset_Handler/);
   assert.match(startup, /bl SystemInit/);
   assert.match(startup, /bl __libc_init_array/);
-  assert.match(startup, /bl SystemInit[\s\S]*ldr r0, =_sidata[\s\S]*bl __libc_init_array[\s\S]*bl main/);
+  // The data copy and the BSS clear run before SystemInit, as in the ST startup files.
+  assert.match(startup, /ldr r0, =_sidata[\s\S]*ldr r1, =_sbss[\s\S]*bl SystemInit[\s\S]*bl __libc_init_array[\s\S]*bl main/);
+  // The BSS clear cursor must advance exactly once per word.
+  assert.doesNotMatch(startup, /str r3, \[r1\], #4\s*\n\s*adds r1, r1, #4/);
   assert.match(startup, /\.weak USART0_IRQHandler/);
 });
 
@@ -101,4 +104,36 @@ test('generates the STM32L476 vector table without L496-only handlers', () => {
   assert.match(startup, /\.word LPUART1_IRQHandler/);
   assert.match(startup, /\.word FPU_IRQHandler/);
   assert.doesNotMatch(startup, /DMA2D_IRQHandler|CAN2_TX_IRQHandler/);
+});
+
+/** Reads the vector table entries in declaration order. */
+function vectorEntries(startup: string): string[] {
+  const body = startup.match(/__Vectors:\n([\s\S]*?)\n\.size __Vectors/)?.[1] ?? '';
+  return body
+    .split('\n')
+    .map((line) => line.trim().replace(/^\.word\s+/, ''))
+    .filter((entry) => entry.length > 0);
+}
+
+test('places the STM32F4 external handlers at their hardware IRQ numbers', () => {
+  // IRQ n is the (16 + n)-th entry, after the stack pointer and the reset vector.
+  const slot = (part: string, irq: number): string =>
+    vectorEntries(generateGnuStartup(getDeviceProfile(part)))[16 + irq];
+
+  for (const part of ['STM32F407VGT6', 'STM32F407ZGT6']) {
+    assert.equal(slot(part, 77), 'OTG_HS_IRQHandler');
+    assert.equal(slot(part, 78), 'DCMI_IRQHandler');
+    // IRQ 79 is the reserved CRYP slot in the ST table and must stay empty,
+    // otherwise HASH_RNG and FPU are installed one interrupt too early.
+    assert.equal(slot(part, 79), '0');
+    assert.equal(slot(part, 80), 'HASH_RNG_IRQHandler');
+    assert.equal(slot(part, 81), 'FPU_IRQHandler');
+  }
+
+  assert.equal(slot('STM32F429ZIT6', 78), 'DCMI_IRQHandler');
+  assert.equal(slot('STM32F429ZIT6', 79), '0');
+  assert.equal(slot('STM32F429ZIT6', 80), 'HASH_RNG_IRQHandler');
+  assert.equal(slot('STM32F429ZIT6', 81), 'FPU_IRQHandler');
+  assert.equal(slot('STM32F429ZIT6', 82), 'UART7_IRQHandler');
+  assert.equal(slot('STM32F429ZIT6', 90), 'DMA2D_IRQHandler');
 });

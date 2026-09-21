@@ -7,13 +7,30 @@ export interface ProjectDescription {
   defines: string[];
 }
 
+export interface ScanOptions {
+  /** Aborts the scan as soon as it is signalled. */
+  signal?: AbortSignal;
+  /** Called for every visited directory, for progress reporting. */
+  onDirectory?: (directory: string) => void;
+}
+
+/** Thrown when a scan is aborted through ScanOptions.signal. */
+export class ScanCancelledError extends Error {
+  constructor() {
+    super('The workspace scan was cancelled.');
+    this.name = 'ScanCancelledError';
+  }
+}
+
 const ignoredDirectories = new Set([
   '.git',
   '.vscode',
   '.cmsis',
   '.eide',
   '.pack',
+  '.cache',
   'build',
+  'CMakeFiles',
   'cmake-build-debug',
   'cmake-build-release',
   'cmake',
@@ -53,15 +70,24 @@ async function walk(
   directory: string,
   sources: string[],
   includeDirs: Set<string>,
-  defines: Set<string>
+  defines: Set<string>,
+  options: ScanOptions
 ): Promise<void> {
+  if (options.signal?.aborted) {
+    throw new ScanCancelledError();
+  }
+  options.onDirectory?.(directory);
+
   const entries = (await readdir(directory, { withFileTypes: true }))
     .sort((left, right) => left.name.localeCompare(right.name));
 
   for (const entry of entries) {
+    if (options.signal?.aborted) {
+      throw new ScanCancelledError();
+    }
     if (entry.isDirectory()) {
       if (!ignoredDirectories.has(entry.name) && !entry.name.startsWith('cmake-build-')) {
-        await walk(root, join(directory, entry.name), sources, includeDirs, defines);
+        await walk(root, join(directory, entry.name), sources, includeDirs, defines, options);
       }
       continue;
     }
@@ -90,11 +116,11 @@ async function walk(
   }
 }
 
-export async function scanProject(root: string): Promise<ProjectDescription> {
+export async function scanProject(root: string, options: ScanOptions = {}): Promise<ProjectDescription> {
   const sources: string[] = [];
   const includeDirs = new Set<string>();
   const defines = new Set<string>();
-  await walk(root, root, sources, includeDirs, defines);
+  await walk(root, root, sources, includeDirs, defines, options);
   return {
     sources: sources.sort(),
     includeDirs: [...includeDirs].filter(Boolean).sort(),

@@ -1,4 +1,12 @@
-export function generateCMakePresets(toolchainFileName = 'gd32-toolchain.cmake'): string {
+/**
+ * Generates CMakePresets.json for a Linux cross compilation project.
+ */
+
+import { linuxToolchainFileName } from './types';
+
+export function generateLinuxCMakePresets(
+  toolchainFileName: string = linuxToolchainFileName
+): string {
   const configurePreset = (name: string, buildType: string, binaryDir: string): Record<string, unknown> => ({
     name,
     displayName: buildType,

@@ -4,6 +4,7 @@ import { getWorkspaceSettings } from '../integration/workspaceSettings';
 
 test('configures CMake Tools and C/C++ IntelliSense for the generated debug preset', () => {
   assert.deepEqual(getWorkspaceSettings(), {
+    'cmake.sourceDirectory': '${workspaceFolder}',
     'cmake.useCMakePresets': 'always',
     'cmake.configureOnOpen': true,
     'C_Cpp.intelliSenseEngine': 'default',

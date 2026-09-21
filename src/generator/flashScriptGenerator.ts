@@ -189,7 +189,7 @@ def main():
     openocd = find_openocd(args.openocd)
     firmware = find_firmware(args.firmware)
     if not openocd:
-        sys.exit("Error: OpenOCD was not found. Set --openocd or mcuCmake.openocdPath.")
+        sys.exit("Error: OpenOCD was not found. Set --openocd or cmakeEmbedded.openocdPath.")
     if not firmware:
         message = "specified firmware was not found" if args.firmware else "firmware was not found"
         sys.exit("Error: " + message + ". Set --firmware to an ELF, HEX, or BIN file.")

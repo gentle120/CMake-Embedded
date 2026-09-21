@@ -47,12 +47,16 @@ export const stm32f4InterruptHandlers = [
   'DMA2_Stream5_IRQHandler', 'DMA2_Stream6_IRQHandler', 'DMA2_Stream7_IRQHandler',
   'USART6_IRQHandler', 'I2C3_EV_IRQHandler', 'I2C3_ER_IRQHandler', 'OTG_HS_EP1_OUT_IRQHandler',
   'OTG_HS_EP1_IN_IRQHandler', 'OTG_HS_WKUP_IRQHandler', 'OTG_HS_IRQHandler',
-  'DCMI_IRQHandler', 'HASH_RNG_IRQHandler', 'FPU_IRQHandler'
+  'DCMI_IRQHandler',
+  // ST reserves the slot after DCMI (IRQ 79, CRYP) in the stm32f4xx vector table,
+  // so HASH_RNG and FPU sit at IRQ 80 and 81 instead of shifting up by one.
+  '0', 'HASH_RNG_IRQHandler', 'FPU_IRQHandler'
 ];
 
+// The F429/F439 table repeats the F407 entries and continues after FPU with the
+// peripherals those parts add.
 export const stm32f4ExtendedInterruptHandlers = [
-  ...stm32f4InterruptHandlers.slice(0, -3),
-  'DCMI_IRQHandler', '0', 'HASH_RNG_IRQHandler', 'FPU_IRQHandler',
+  ...stm32f4InterruptHandlers,
   'UART7_IRQHandler', 'UART8_IRQHandler', 'SPI4_IRQHandler', 'SPI5_IRQHandler',
   'SPI6_IRQHandler', 'SAI1_IRQHandler', 'LTDC_IRQHandler', 'LTDC_ER_IRQHandler',
   'DMA2D_IRQHandler'

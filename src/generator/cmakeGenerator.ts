@@ -1,6 +1,7 @@
 import type { DeviceProfile } from '../devices/deviceProfiles';
 import { runtimeSourceNames } from './runtimeGenerator';
 import type { ProjectDescription } from '../scanner/projectScanner';
+import { preserveUserCodeSection, userCodeSection } from '../shared/userCodeSection';
 
 function cmakePath(value: string): string {
   return value.replace(/\\/g, '/').replace(/"/g, '\\"');
@@ -8,67 +9,6 @@ function cmakePath(value: string): string {
 
 function projectPath(value: string): string {
   return `"\${MCU_PROJECT_ROOT}/${cmakePath(value)}"`;
-}
-
-const userCodeBeginMarker = '# CMAKE-EMBEDDED USER CODE BEGIN';
-const userCodeEndMarker = '# CMAKE-EMBEDDED USER CODE END';
-const previousEmptyUserCodeSection = `${userCodeBeginMarker}
-# Add custom compiler definitions, include directories, source files,
-# assembly files, library search paths, static library files, and libraries here.
-# This section is preserved when CMakeLists.txt is generated again.
-
-${userCodeEndMarker}`;
-
-function userCodeSection(projectName: string): string {
-  return `${userCodeBeginMarker}
-# Add user-defined library search paths.
-target_link_directories(\${CMAKE_PROJECT_NAME} PRIVATE
-)
-
-# Add user source and assembly files.
-target_sources(\${CMAKE_PROJECT_NAME} PRIVATE
-)
-
-# Add user-defined include paths.
-target_include_directories(\${CMAKE_PROJECT_NAME} PRIVATE
-)
-
-# Add user-defined compiler definitions.
-target_compile_definitions(\${CMAKE_PROJECT_NAME} PRIVATE
-)
-
-# Add user-defined libraries or library files.
-target_link_libraries(\${CMAKE_PROJECT_NAME} PRIVATE
-)
-
-# This section is preserved when CMakeLists.txt is generated again.
-
-${userCodeEndMarker}`;
-}
-
-function preserveUserCodeSection(existingContent: string | undefined, generatedContent: string): string {
-  if (!existingContent) {
-    return generatedContent;
-  }
-
-  const existingBegin = existingContent.indexOf(userCodeBeginMarker);
-  const existingEnd = existingContent.indexOf(userCodeEndMarker);
-  if (existingBegin < 0 || existingEnd < existingBegin) {
-    return generatedContent;
-  }
-
-  const generatedBegin = generatedContent.indexOf(userCodeBeginMarker);
-  const generatedEnd = generatedContent.indexOf(userCodeEndMarker);
-  if (generatedBegin < 0 || generatedEnd < generatedBegin) {
-    throw new Error('Generated CMakeLists.txt is missing the user code section markers.');
-  }
-
-  const existingSection = existingContent.slice(existingBegin, existingEnd + userCodeEndMarker.length);
-  const generatedSection = generatedContent.slice(generatedBegin, generatedEnd + userCodeEndMarker.length);
-  if (existingSection.replace(/\r\n/g, '\n') === previousEmptyUserCodeSection) {
-    return `${generatedContent.slice(0, generatedBegin)}${generatedSection}${generatedContent.slice(generatedEnd + userCodeEndMarker.length)}`;
-  }
-  return `${generatedContent.slice(0, generatedBegin)}${existingSection}${generatedContent.slice(generatedEnd + userCodeEndMarker.length)}`;
 }
 
 export function generateCMakeLists(
@@ -134,17 +74,19 @@ target_compile_definitions(${projectName} PRIVATE
 ${defineBlock}
 )
 
-${userCodeSection(projectName)}
+${userCodeSection()}
 
 set_target_properties(${projectName} PROPERTIES
     ADDITIONAL_CLEAN_FILES "\${CMAKE_BINARY_DIR}/${projectName}.map"
 )
 
-add_custom_command(TARGET ${projectName} POST_BUILD
-    COMMAND \${CMAKE_OBJCOPY} -O ihex \$<TARGET_FILE:${projectName}> \${CMAKE_BINARY_DIR}/${projectName}.hex
-    COMMAND \${CMAKE_OBJCOPY} -O binary \$<TARGET_FILE:${projectName}> \${CMAKE_BINARY_DIR}/${projectName}.bin
-    COMMAND \${CMAKE_SIZE} \$<TARGET_FILE:${projectName}>
-)
+if(CMAKE_OBJCOPY AND CMAKE_SIZE)
+    add_custom_command(TARGET ${projectName} POST_BUILD
+        COMMAND \${CMAKE_OBJCOPY} -O ihex \$<TARGET_FILE:${projectName}> \${CMAKE_BINARY_DIR}/${projectName}.hex
+        COMMAND \${CMAKE_OBJCOPY} -O binary \$<TARGET_FILE:${projectName}> \${CMAKE_BINARY_DIR}/${projectName}.bin
+        COMMAND \${CMAKE_SIZE} \$<TARGET_FILE:${projectName}>
+    )
+endif()
 `;
 
   return preserveUserCodeSection(existingContent, generated);

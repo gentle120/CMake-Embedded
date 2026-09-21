@@ -15,6 +15,9 @@ export interface WorkspaceIntegration {
 }
 
 const workspaceSettings: Record<string, WorkspaceSettingValue> = {
+  // The generated CMakeLists.txt and CMakePresets.json always live in the workspace root,
+  // so a stale source directory would hide the generated presets from CMake Tools.
+  'cmake.sourceDirectory': '${workspaceFolder}',
   'cmake.useCMakePresets': 'always',
   'cmake.configureOnOpen': true,
   'C_Cpp.intelliSenseEngine': 'default',

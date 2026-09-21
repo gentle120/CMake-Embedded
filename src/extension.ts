@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join, basename, dirname, isAbsolute, relative } from 'node:path';
+import { join, basename, dirname, isAbsolute } from 'node:path';
 import { getDeviceProfile, listDeviceProfiles, type DeviceSeries, type DeviceVendor } from './devices/deviceProfiles';
 import { listDeviceProfilesForSeries, listDeviceSeries, listDeviceVendors } from './devices/deviceSelection';
 import { generateCMakeLists } from './generator/cmakeGenerator';
@@ -24,12 +24,22 @@ import {
 } from './flash/targets/targetProfiles';
 import { getWorkspaceSettings } from './integration/workspaceSettings';
 import { configureCppProperties } from './integration/cppProperties';
-import { scanProject } from './scanner/projectScanner';
-
-interface GeneratedFile {
-  path: string;
-  content: string;
-}
+import { scanProject, ScanCancelledError, type ProjectDescription } from './scanner/projectScanner';
+import { generateLinuxCMakeLists } from './linux/cmakeGenerator';
+import { generateLinuxProjectConfig } from './linux/configGenerator';
+import { configureLinuxCppProperties, getLinuxWorkspaceSettings } from './linux/integration';
+import { generateLinuxCMakePresets } from './linux/presetsGenerator';
+import { selectLinuxToolchain } from './linux/selection';
+import { describeLinuxProject } from './linux/projectStructure';
+import { readLinuxProjectConfig } from './linux/projectConfig';
+import { generateLinuxToolchainFile } from './linux/toolchainGenerator';
+import { linuxConfigFileName, linuxToolchainFileName } from './linux/types';
+import {
+  findExistingFiles,
+  toWorkspacePath,
+  writeGeneratedFiles,
+  type GeneratedFile
+} from './shared/generatedFiles';
 
 async function exists(filePath: string): Promise<boolean> {
   try {
@@ -40,8 +50,31 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-async function updateWorkspaceSettings(): Promise<void> {
-  for (const [key, value] of Object.entries(getWorkspaceSettings())) {
+async function scanWorkspace(root: string): Promise<ProjectDescription | undefined> {
+  try {
+    return await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'Scanning the workspace for source files...',
+        cancellable: true
+      },
+      async (_progress, token) => {
+        const controller = new AbortController();
+        token.onCancellationRequested(() => controller.abort());
+        return scanProject(root, { signal: controller.signal });
+      }
+    );
+  } catch (error) {
+    if (error instanceof ScanCancelledError) {
+      vscode.window.showInformationMessage('Workspace scan cancelled.');
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+async function updateWorkspaceSettings(settings: Record<string, string | boolean>): Promise<void> {
+  for (const [key, value] of Object.entries(settings)) {
     const separator = key.indexOf('.');
     const section = key.slice(0, separator);
     const setting = key.slice(separator + 1);
@@ -219,13 +252,33 @@ async function shouldGenerateFlashScript(): Promise<boolean | undefined> {
 }
 
 function getOpenOcdPath(): string {
-  return vscode.workspace.getConfiguration('mcuCmake').get<string>('openocdPath', 'openocd')?.trim() || 'openocd';
+  return vscode.workspace.getConfiguration('cmakeEmbedded').get<string>('openocdPath', 'openocd')?.trim() || 'openocd';
 }
 
 function getArmToolchainPath(): string | undefined {
-  const configuredPath = vscode.workspace.getConfiguration('mcuCmake')
+  const configuredPath = vscode.workspace.getConfiguration('cmakeEmbedded')
     .get<string>('armToolchainPath', '')?.trim();
   return configuredPath || undefined;
+}
+
+/**
+ * Cortex-Debug is only needed by the generated debug configuration, so it is no
+ * longer a hard extension dependency.
+ */
+async function ensureCortexDebugInstalled(): Promise<boolean> {
+  if (vscode.extensions.getExtension('marus25.cortex-debug')) {
+    return true;
+  }
+  const action = await vscode.window.showWarningMessage(
+    'Cortex-Debug is required to use the generated debug configuration.',
+    'Install',
+    'Continue'
+  );
+  if (action === 'Install') {
+    await vscode.commands.executeCommand('workbench.extensions.installExtension', 'marus25.cortex-debug');
+    return false;
+  }
+  return action === 'Continue';
 }
 
 async function findOpenOcdSearchDirs(openocdPath: string): Promise<string[]> {
@@ -250,6 +303,9 @@ async function generateDebugConfigurationOnly(): Promise<void> {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   if (!workspaceFolder) {
     vscode.window.showErrorMessage('Open an MCU project folder before generating a debug configuration.');
+    return;
+  }
+  if (!(await ensureCortexDebugInstalled())) {
     return;
   }
   const target = await selectFlashTarget();
@@ -330,7 +386,10 @@ async function generateProject(): Promise<void> {
   }
 
   const root = workspaceFolder.uri.fsPath;
-  const project = await scanProject(root);
+  const project = await scanWorkspace(root);
+  if (!project) {
+    return;
+  }
   if (project.sources.length === 0) {
     vscode.window.showErrorMessage('No C/C++ or assembly source files were found in the workspace.');
     return;
@@ -360,12 +419,7 @@ async function generateProject(): Promise<void> {
   const settingsPath = join(root, '.vscode', 'settings.json');
   const cppPropertiesPath = join(root, '.vscode', 'c_cpp_properties.json');
   const filesToCheck = [...generatedFiles.map((file) => file.path), settingsPath, cppPropertiesPath, configPath];
-  const existingFiles: string[] = [];
-  for (const filePath of filesToCheck) {
-    if (await exists(filePath)) {
-      existingFiles.push(filePath);
-    }
-  }
+  const existingFiles = await findExistingFiles(filesToCheck);
   if (existingFiles.length > 0) {
     const action = await vscode.window.showWarningMessage(
       `${existingFiles.length} generated file(s) already exist. Overwrite them?`,
@@ -380,14 +434,17 @@ async function generateProject(): Promise<void> {
   await mkdir(join(root, 'cmake'), { recursive: true });
   await mkdir(join(root, 'system'), { recursive: true });
   await mkdir(join(root, '.vscode'), { recursive: true });
-  const relativePath = (filePath: string): string => relative(root, filePath).replace(/\\/g, '/');
   const configFile: GeneratedFile = {
     path: configPath,
     content: generateProjectConfig(
       projectName,
       profile,
-      [...generatedFiles.map((file) => relativePath(file.path)), relativePath(settingsPath), relativePath(cppPropertiesPath)],
-      existingFiles.map(relativePath),
+      [
+        ...generatedFiles.map((file) => toWorkspacePath(root, file.path)),
+        toWorkspacePath(root, settingsPath),
+        toWorkspacePath(root, cppPropertiesPath)
+      ],
+      existingFiles.map((filePath) => toWorkspacePath(root, filePath)),
       flashTarget && flashProbe ? {
         script: 'flash.py',
         probe: flashProbe.id,
@@ -406,9 +463,9 @@ async function generateProject(): Promise<void> {
     path: cppPropertiesPath,
     content: configureCppProperties(cppPropertiesContent)
   };
-  await Promise.all([...generatedFiles, configFile, cppPropertiesFile].map((file) => writeFile(file.path, file.content, 'utf8')));
+  await writeGeneratedFiles([...generatedFiles, configFile, cppPropertiesFile]);
   try {
-    await updateWorkspaceSettings();
+    await updateWorkspaceSettings(getWorkspaceSettings());
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     vscode.window.showWarningMessage(`CMake Tools/IntelliSense settings were not updated: ${message}`);
@@ -418,11 +475,99 @@ async function generateProject(): Promise<void> {
   );
 }
 
+async function generateLinuxProject(): Promise<void> {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    vscode.window.showErrorMessage('Open a project folder before generating CMake.');
+    return;
+  }
+
+  const root = workspaceFolder.uri.fsPath;
+  const project = await scanWorkspace(root);
+  if (!project) {
+    return;
+  }
+  if (project.sources.length === 0) {
+    vscode.window.showErrorMessage('No C/C++ or assembly source files were found in the workspace.');
+    return;
+  }
+
+  // The previous .linux-cmake.json decides which toolchain is listed first and
+  // supplies the preprocessor definitions, which the scanner does not collect.
+  const configPath = join(root, linuxConfigFileName);
+  const saved = await readLinuxProjectConfig(configPath);
+
+  const toolchain = await selectLinuxToolchain(saved?.toolchainFamily);
+  if (!toolchain) {
+    return;
+  }
+  const structure = describeLinuxProject(project, projectNameFromRoot(root), saved?.defines ?? []);
+
+  const cmakePath = join(root, 'CMakeLists.txt');
+  const existingCMakeContent = await exists(cmakePath) ? await readFile(cmakePath, 'utf8') : undefined;
+  const generatedFiles: GeneratedFile[] = [
+    { path: cmakePath, content: generateLinuxCMakeLists(structure, existingCMakeContent) },
+    { path: join(root, 'CMakePresets.json'), content: generateLinuxCMakePresets() },
+    { path: join(root, 'cmake', linuxToolchainFileName), content: generateLinuxToolchainFile(toolchain) }
+  ];
+  const settingsPath = join(root, '.vscode', 'settings.json');
+  const cppPropertiesPath = join(root, '.vscode', 'c_cpp_properties.json');
+  const filesToCheck = [...generatedFiles.map((file) => file.path), settingsPath, cppPropertiesPath, configPath];
+  const existingFiles = await findExistingFiles(filesToCheck);
+  if (existingFiles.length > 0) {
+    const action = await vscode.window.showWarningMessage(
+      `${existingFiles.length} generated file(s) already exist. Overwrite them?`,
+      'Overwrite',
+      'Cancel'
+    );
+    if (action !== 'Overwrite') {
+      return;
+    }
+  }
+
+  const configFile: GeneratedFile = {
+    path: configPath,
+    content: generateLinuxProjectConfig(
+      structure.targetName,
+      toolchain,
+      structure,
+      [
+        ...generatedFiles.map((file) => toWorkspacePath(root, file.path)),
+        toWorkspacePath(root, settingsPath),
+        toWorkspacePath(root, cppPropertiesPath)
+      ],
+      existingFiles.map((filePath) => toWorkspacePath(root, filePath))
+    )
+  };
+  const cppPropertiesContent = await exists(cppPropertiesPath)
+    ? await readFile(cppPropertiesPath, 'utf8')
+    : undefined;
+  const cppPropertiesFile: GeneratedFile = {
+    path: cppPropertiesPath,
+    content: configureLinuxCppProperties(cppPropertiesContent, toolchain)
+  };
+
+  await mkdir(join(root, 'cmake'), { recursive: true });
+  await mkdir(join(root, '.vscode'), { recursive: true });
+  await writeGeneratedFiles([...generatedFiles, configFile, cppPropertiesFile]);
+  try {
+    await updateWorkspaceSettings(getLinuxWorkspaceSettings());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    vscode.window.showWarningMessage(`CMake Tools/IntelliSense settings were not updated: ${message}`);
+  }
+  vscode.window.showInformationMessage(
+    `Generated Linux CMake project for ${structure.targetName}: `
+    + `${structure.sources.length} source file(s) using ${toolchain.compilerPrefix}gcc.`
+  );
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.commands.registerCommand('mcuCmake.generate', () => generateProject()),
-    vscode.commands.registerCommand('mcuCmake.generateFlashScript', () => generateFlashScriptOnly()),
-    vscode.commands.registerCommand('mcuCmake.generateDebugConfiguration', () => generateDebugConfigurationOnly())
+    vscode.commands.registerCommand('cmakeEmbedded.generateMcu', () => generateProject()),
+    vscode.commands.registerCommand('cmakeEmbedded.generateLinux', () => generateLinuxProject()),
+    vscode.commands.registerCommand('cmakeEmbedded.generateFlashScript', () => generateFlashScriptOnly()),
+    vscode.commands.registerCommand('cmakeEmbedded.generateDebugConfiguration', () => generateDebugConfigurationOnly())
   );
 }
 

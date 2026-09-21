@@ -52,7 +52,6 @@ ${vectorLines}
 .type Reset_Handler, %function
 Reset_Handler:
   ldr sp, =_estack
-  bl SystemInit
 
   ldr r0, =_sidata
   ldr r1, =_sdata
@@ -72,10 +71,11 @@ Reset_Handler:
   bcs 4f
 3:
   str r3, [r1], #4
-  adds r1, r1, #4
   cmp r1, r2
   bcc 3b
 4:
+  /* SystemInit runs after the data copy and the BSS clear, as in the ST startup files. */
+  bl SystemInit
   bl __libc_init_array
   bl main
 5:

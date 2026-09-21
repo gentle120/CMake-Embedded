@@ -1,8 +1,8 @@
 {
   "name": "cmake-embedded",
   "displayName": "CMake-Embedded",
-  "description": "Generate a CMake build project for MCU firmware.",
-  "version": "2.0.1",
+  "description": "Generate ready-to-build CMake projects for MCU firmware and for Linux / SoC cross compilation.",
+  "version": "2.0.5",
   "publisher": "gentle120",
   "repository": {
     "type": "git",
@@ -15,42 +15,40 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:mcuCmake.generate",
-    "onCommand:mcuCmake.generateFlashScript",
-    "onCommand:mcuCmake.generateDebugConfiguration"
-  ],
   "extensionDependencies": [
     "ms-vscode.cmake-tools",
-    "ms-vscode.cpptools",
-    "marus25.cortex-debug"
+    "ms-vscode.cpptools"
   ],
   "main": "./out/extension.js",
   "icon": "images/icon-electric.png",
   "contributes": {
     "commands": [
       {
-        "command": "mcuCmake.generate",
-        "title": "CMake-Embedded: Generate Project"
+        "command": "cmakeEmbedded.generateMcu",
+        "title": "CMake-Embedded: Generate MCU Project"
       },
       {
-        "command": "mcuCmake.generateFlashScript",
+        "command": "cmakeEmbedded.generateLinux",
+        "title": "CMake-Embedded: Generate Linux Project"
+      },
+      {
+        "command": "cmakeEmbedded.generateFlashScript",
         "title": "CMake-Embedded: Generate OpenOCD Flash Script"
       },
       {
-        "command": "mcuCmake.generateDebugConfiguration",
+        "command": "cmakeEmbedded.generateDebugConfiguration",
         "title": "CMake-Embedded: Generate Cortex-Debug Configuration"
       }
     ],
     "configuration": {
       "title": "CMake-Embedded",
       "properties": {
-        "mcuCmake.openocdPath": {
+        "cmakeEmbedded.openocdPath": {
           "type": "string",
           "default": "openocd",
           "description": "Path to the OpenOCD executable. Use openocd when it is available in PATH."
         },
-        "mcuCmake.armToolchainPath": {
+        "cmakeEmbedded.armToolchainPath": {
           "type": "string",
           "default": "",
           "description": "Path to the ARM GNU Toolchain bin directory used by Cortex-Debug."
@@ -59,7 +57,9 @@
     }
   },
   "scripts": {
-    "compile": "tsc -p ./",
+    "clean": "node -e \"require('node:fs').rmSync('out',{recursive:true,force:true})\"",
+    "compile": "npm run clean && tsc -p ./",
+    "vscode:prepublish": "npm run compile",
     "test": "npm run compile && node --test out/test/*.test.js"
   },
   "devDependencies": {

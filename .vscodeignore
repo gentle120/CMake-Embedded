@@ -1,5 +1,6 @@
 .gitignore
 .vscode
+docs
 src
 test
 out/**/*.map
@@ -9,3 +10,4 @@ out/test
 tsconfig.json
 ~$*
 *.doc
+*.vsix

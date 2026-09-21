@@ -8,11 +8,13 @@ test('uses the extension name in command and settings display titles', () => {
   assert.deepEqual(
     manifest.contributes.commands.map((command: { title: string }) => command.title),
     [
-      'CMake-Embedded: Generate Project',
+      'CMake-Embedded: Generate MCU Project',
+      'CMake-Embedded: Generate Linux Project',
       'CMake-Embedded: Generate OpenOCD Flash Script',
       'CMake-Embedded: Generate Cortex-Debug Configuration'
     ]
   );
   assert.equal(manifest.contributes.configuration.title, 'CMake-Embedded');
-  assert.ok(manifest.extensionDependencies.includes('marus25.cortex-debug'));
+  assert.ok(manifest.extensionDependencies.includes('ms-vscode.cmake-tools'));
+  assert.ok(!manifest.extensionDependencies.includes('marus25.cortex-debug'));
 });

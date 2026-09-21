@@ -3,7 +3,7 @@ import test from 'node:test';
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { scanProject } from '../scanner/projectScanner';
+import { scanProject, ScanCancelledError } from '../scanner/projectScanner';
 
 test('scans source files, headers, include directories, and defines', async () => {
   const root = await mkdtemp(join(tmpdir(), 'mcu-cmake-'));
@@ -69,4 +69,26 @@ test('does not scan HSE and LSE clock configuration macros', async () => {
   const project = await scanProject(root);
 
   assert.deepEqual(project.defines, []);
+});
+
+test('aborts a scan when the signal is already aborted', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'mcu-cmake-'));
+  await writeFile(join(root, 'main.c'), 'int main(void) { return 0; }\n');
+
+  const controller = new AbortController();
+  controller.abort();
+
+  await assert.rejects(() => scanProject(root, { signal: controller.signal }), ScanCancelledError);
+});
+
+test('reports every visited directory for progress reporting', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'mcu-cmake-'));
+  await mkdir(join(root, 'src'), { recursive: true });
+  await writeFile(join(root, 'src', 'main.c'), 'int main(void) { return 0; }\n');
+
+  const visited: string[] = [];
+  await scanProject(root, { onDirectory: (directory) => visited.push(directory) });
+
+  assert.equal(visited[0], root);
+  assert.ok(visited.some((directory) => directory.endsWith('src')));
 });
