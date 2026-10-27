@@ -1,6 +1,7 @@
 .gitignore
 .vscode
 docs
+CHANGELOG.md
 src
 test
 out/**/*.map
