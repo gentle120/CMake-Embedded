@@ -1,0 +1,341 @@
+:root {
+  color-scheme: light dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--vscode-sideBar-foreground);
+  background: var(--vscode-sideBar-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+button,
+select,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+button:disabled,
+select:disabled,
+input:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+#app {
+  min-height: 100vh;
+  padding: 10px;
+}
+
+.app-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0 10px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.workspace-name {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-badge {
+  flex: 0 0 auto;
+  max-width: 92px;
+  padding: 2px 7px;
+  overflow: hidden;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-badge.busy {
+  border-color: var(--vscode-progressBar-background);
+  color: var(--vscode-foreground);
+}
+
+.status-badge.success {
+  border-color: var(--vscode-testing-iconPassed);
+  color: var(--vscode-testing-iconPassed);
+}
+
+.status-badge.error {
+  border-color: var(--vscode-errorForeground);
+  color: var(--vscode-errorForeground);
+}
+
+.mode-switcher {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 2px;
+  margin-bottom: 10px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 5px;
+}
+
+.mode-button {
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 3px;
+  color: var(--vscode-sideBar-foreground);
+  background: transparent;
+  font-size: 11px;
+}
+
+.mode-button[aria-pressed="true"] {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+.configuration {
+  display: grid;
+  gap: 8px;
+}
+
+.configuration-panel {
+  display: grid;
+  gap: 9px;
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+}
+
+.field-label {
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.field select,
+.field input {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0 7px;
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 3px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+}
+
+.field-detail {
+  min-height: 15px;
+  margin: 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.option-card {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  background: var(--vscode-editorWidget-background);
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.quick-action {
+  min-width: 0;
+  height: 27px;
+  padding: 0 5px;
+  overflow: hidden;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  color: var(--vscode-sideBar-foreground);
+  background: transparent;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-action:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.option-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.option-row input {
+  flex: 0 0 auto;
+  accent-color: var(--vscode-checkbox-background);
+}
+
+.advanced {
+  padding-top: 7px;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.advanced summary {
+  cursor: pointer;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+}
+
+.advanced-grid {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.actions {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 6px;
+  padding: 10px 0 2px;
+  background: var(--vscode-sideBar-background);
+}
+
+.secondary-action,
+.primary-action {
+  min-width: 0;
+  height: 30px;
+  padding: 0 7px;
+  overflow: hidden;
+  border-radius: 3px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.secondary-action {
+  border: 1px solid var(--vscode-button-border, var(--vscode-panel-border));
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+
+.secondary-action:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.primary-action {
+  border: 1px solid var(--vscode-button-border, transparent);
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  font-weight: 600;
+}
+
+.primary-action:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.result-region {
+  margin-top: 10px;
+  padding: 8px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+}
+
+.result-region h2 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.result-region ul {
+  display: grid;
+  gap: 3px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.result-region li {
+  overflow-wrap: anywhere;
+  color: var(--vscode-descriptionForeground);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 10px;
+}
+
+.empty-note {
+  margin: 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 240px) {
+  #app {
+    padding: 7px;
+  }
+
+  .app-header {
+    display: grid;
+  }
+
+  .status-badge {
+    max-width: none;
+    justify-self: start;
+  }
+
+  .mode-switcher,
+  .actions,
+  .quick-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .mode-button,
+  .secondary-action,
+  .primary-action {
+    width: 100%;
+
+  }
+}
