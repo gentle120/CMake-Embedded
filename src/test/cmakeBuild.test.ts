@@ -13,6 +13,11 @@ import { generateSyscalls, generateSysmem } from '../generator/runtimeGenerator'
 import { generateGnuStartup } from '../generator/startupGenerator';
 
 const execFileAsync = promisify(execFile);
+const firmwareBuildsEnabled = process.env.CMAKE_EMBEDDED_SKIP_FIRMWARE_BUILDS !== '1';
+
+const firmwareBuildOptions = {
+  skip: !firmwareBuildsEnabled
+};
 
 async function buildMinimalFirmware(part: string): Promise<void> {
   const root = await mkdtemp(join(tmpdir(), 'mcu-cmake-build-'));
@@ -49,23 +54,23 @@ async function buildMinimalFirmware(part: string): Promise<void> {
   }
 }
 
-test('generated files configure and build a minimal GD32F103 firmware', async () => {
+test('generated files configure and build a minimal GD32F103 firmware', firmwareBuildOptions, async () => {
   await buildMinimalFirmware('GD32F103C8T6');
 });
 
-test('generated files configure and build a minimal STM32F407 firmware', async () => {
+test('generated files configure and build a minimal STM32F407 firmware', firmwareBuildOptions, async () => {
   await buildMinimalFirmware('STM32F407VGT6');
 });
 
-test('generated files configure and build a minimal GD32F450 firmware', async () => {
+test('generated files configure and build a minimal GD32F450 firmware', firmwareBuildOptions, async () => {
   await buildMinimalFirmware('GD32F450VGT6');
 });
 
-test('generated files configure and build a minimal STM32F103 firmware', async () => {
+test('generated files configure and build a minimal STM32F103 firmware', firmwareBuildOptions, async () => {
   await buildMinimalFirmware('STM32F103C8T6');
 });
 
-test('generated files build the additional F1 and F4 package variants', async () => {
+test('generated files build the additional F1 and F4 package variants', firmwareBuildOptions, async () => {
   for (const part of [
     'GD32F103CBT6',
     'GD32F103RCT6',

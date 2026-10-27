@@ -25,6 +25,8 @@ jobs:
         run: npm ci
 
       - name: Run tests
+        env:
+          CMAKE_EMBEDDED_SKIP_FIRMWARE_BUILDS: "1"
         run: npm test
 
       - name: Package VSIX
