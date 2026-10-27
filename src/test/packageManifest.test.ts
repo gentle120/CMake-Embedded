@@ -19,3 +19,15 @@ test('uses the extension name in command and settings display titles', () => {
   assert.ok(manifest.extensionDependencies.includes('ms-vscode.cmake-tools'));
   assert.ok(!manifest.extensionDependencies.includes('marus25.cortex-debug'));
 });
+
+test('keeps the Marketplace icon square and below the upload size limit', () => {
+  const manifest = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8'));
+  const iconPath = join(__dirname, '..', '..', manifest.icon);
+  const icon = readFileSync(iconPath);
+  const width = icon.readUInt32BE(16);
+  const height = icon.readUInt32BE(20);
+
+  assert.equal(width, 256);
+  assert.equal(height, 256);
+  assert.ok(icon.byteLength < 1024 * 1024, `icon is ${icon.byteLength} bytes`);
+});

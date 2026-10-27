@@ -2,7 +2,7 @@
   "name": "cmake-embedded",
   "displayName": "CMake-Embedded",
   "description": "Generate ready-to-build CMake projects for desktop C/C++, MCU firmware, and Linux / SoC cross compilation.",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "publisher": "gentle120",
   "repository": {
     "type": "git",
@@ -30,7 +30,7 @@
     "ms-vscode.cpptools"
   ],
   "main": "./out/extension.js",
-  "icon": "images/icon-electric.png",
+  "icon": "images/cmake-embedded-icon.png",
   "readme": "README.md",
   "activationEvents": [
     "onView:cmakeEmbedded.sidebar"

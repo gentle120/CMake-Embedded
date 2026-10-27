@@ -2,6 +2,7 @@
 .vscode
 docs
 CHANGELOG.md
+.github
 src
 test
 out/**/*.map
@@ -13,3 +14,5 @@ tsconfig.json
 ~$*
 *.doc
 *.vsix
+images/icon-electric.png
+img/demo.png

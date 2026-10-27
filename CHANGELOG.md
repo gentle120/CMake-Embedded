@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.1
+
+- Compress the Marketplace icon to a 256x256 PNG below the 1 MB upload limit.
+- Remove the obsolete README screenshot and its packaged image asset.
+
 ## 2.1.0
 
 - Add a sidebar with one-click generation for MCU, Linux / SoC, and ordinary
