@@ -87,6 +87,12 @@
     post({ type: 'saveSelection', selection });
   }
 
+  function updateFromSelection(selection) {
+    state.selection = selection;
+    render();
+    post({ type: 'saveSelection', selection });
+  }
+
   function quickAction(label, type) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -106,17 +112,17 @@
     panel.append(
       selectField('厂商', state.vendors, selection.mcu.vendor, () => {}),
       selectField('系列', state.series, selection.mcu.series, (value) => {
-        saveSelection({ ...selection, mcu: { ...selection.mcu, series: value } });
+        updateFromSelection({ ...selection, mcu: { ...selection.mcu, series: value } });
       }),
       selectField('型号', state.devices, selection.mcu.part, (value) => {
-        saveSelection({ ...selection, mcu: { ...selection.mcu, part: value } });
+        updateFromSelection({ ...selection, mcu: { ...selection.mcu, part: value } });
       })
     );
 
     const vendorSelect = panel.querySelector('select');
     if (vendorSelect) {
       vendorSelect.addEventListener('change', () => {
-        saveSelection({ ...selection, mcu: { ...selection.mcu, vendor: vendorSelect.value } });
+        updateFromSelection({ ...selection, mcu: { ...selection.mcu, vendor: vendorSelect.value } });
       });
     }
     const device = selectedOption(state.devices, selection.mcu.part);
@@ -129,10 +135,10 @@
 
     panel.append(
       optionCard('生成 flash.py', selection.flash.enabled, (enabled) => {
-        saveSelection({ ...selection, flash: { ...selection.flash, enabled } });
+        updateFromSelection({ ...selection, flash: { ...selection.flash, enabled } });
       }, '生成独立 OpenOCD 烧录脚本。'),
       optionCard('生成 Cortex-Debug 配置', selection.debugEnabled, (enabled) => {
-        saveSelection({ ...selection, debugEnabled: enabled });
+        updateFromSelection({ ...selection, debugEnabled: enabled });
       }, '写入 .vscode/launch.json。')
     );
     const quickActions = document.createElement('div');
@@ -151,10 +157,10 @@
     grid.className = 'advanced-grid';
     grid.append(
       selectField('烧录 target', state.flashTargets, selection.flash.targetId, (value) => {
-        saveSelection({ ...selection, flash: { ...selection.flash, targetId: value } });
+        updateFromSelection({ ...selection, flash: { ...selection.flash, targetId: value } });
       }),
       selectField('调试器', state.flashProbes, selection.flash.probeId, (value) => {
-        saveSelection({ ...selection, flash: { ...selection.flash, probeId: value } });
+        updateFromSelection({ ...selection, flash: { ...selection.flash, probeId: value } });
       })
     );
     const pathInput = document.createElement('input');
@@ -162,7 +168,7 @@
     pathInput.value = selection.flash.openocdPath;
     pathInput.disabled = busy;
     pathInput.addEventListener('change', () => {
-      saveSelection({ ...selection, flash: { ...selection.flash, openocdPath: pathInput.value } });
+      updateFromSelection({ ...selection, flash: { ...selection.flash, openocdPath: pathInput.value } });
     });
     grid.append(field('OpenOCD 路径', pathInput));
     advanced.append(summary, grid);
@@ -175,7 +181,7 @@
     panel.className = 'configuration-panel';
     const selection = state.selection;
     const toolchain = selectField('交叉工具链', state.linuxToolchains, selection.linux.toolchainFamily, (value) => {
-      saveSelection({ ...selection, linux: { ...selection.linux, toolchainFamily: value } });
+      updateFromSelection({ ...selection, linux: { ...selection.linux, toolchainFamily: value } });
     });
     panel.append(toolchain);
     const selected = selectedOption(state.linuxToolchains, selection.linux.toolchainFamily);

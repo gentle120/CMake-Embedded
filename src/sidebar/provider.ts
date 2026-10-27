@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
-import { getDeviceProfile } from '../devices/deviceProfiles';
+import { getDeviceProfile, listDeviceProfiles } from '../devices/deviceProfiles';
+import { listDeviceProfilesForSeries, listDeviceSeries } from '../devices/deviceSelection';
 import { getFlashProbeProfile } from '../flash/probeProfiles';
 import { getFlashTargetProfile } from '../flash/targets/targetProfiles';
 import {
@@ -127,7 +128,29 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
   }
 
   private async saveSelection(value: unknown): Promise<void> {
-    this.selectionValue = sanitizeSidebarSelection(value, this.selectionValue);
+    const previous = this.selectionValue;
+    this.selectionValue = sanitizeSidebarSelection(value, previous);
+    const vendorChanged = this.selectionValue.mcu.vendor !== previous.mcu.vendor;
+    const seriesChanged = this.selectionValue.mcu.series !== previous.mcu.series;
+    if (vendorChanged || seriesChanged) {
+      const profiles = listDeviceProfiles();
+      const nextSeries = vendorChanged
+        ? listDeviceSeries(profiles, this.selectionValue.mcu.vendor)[0]
+        : this.selectionValue.mcu.series;
+      const nextPart = listDeviceProfilesForSeries(
+        profiles,
+        this.selectionValue.mcu.vendor,
+        nextSeries
+      )[0]?.part;
+      this.selectionValue = sanitizeSidebarSelection({
+        ...this.selectionValue,
+        mcu: {
+          vendor: this.selectionValue.mcu.vendor,
+          series: nextSeries,
+          part: nextPart
+        }
+      }, previous);
+    }
     await this.context.workspaceState.update(selectionKey, this.selectionValue);
     this.postState();
   }
