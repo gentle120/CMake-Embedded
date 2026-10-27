@@ -5,6 +5,7 @@ src
 test
 out/**/*.map
 out/test
+out/**/*.ts
 *.ts
 *.tsbuildinfo
 tsconfig.json
