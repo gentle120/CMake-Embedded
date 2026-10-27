@@ -13,7 +13,6 @@ import {
 } from '../generation/workflow';
 import { discoverLinuxToolchains } from '../linux/discovery';
 import { createLinuxToolchain } from '../linux/toolchainGenerator';
-import type { LinuxToolchainFamily } from '../linux/types';
 import { scanProject } from '../scanner/projectScanner';
 import { renderSidebarHtml } from './html';
 import { parseIncomingMessage, type SidebarIncomingMessage } from './messages';
@@ -55,7 +54,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
   private disposed = false;
   private busy = false;
   private selectionValue: SidebarSelection;
-  private readonly messageDisposable?: vscode.Disposable;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -75,15 +73,16 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
     const nonce = randomBytes(16).toString('base64');
     view.webview.html = renderSidebarHtml(view.webview, this.context.extensionUri, nonce);
 
-    const disposable = view.webview.onDidReceiveMessage((value) => {
+    const messageDisposable = view.webview.onDidReceiveMessage((value) => {
       const message = parseIncomingMessage(value);
       if (!message) {
         return;
       }
       void this.handleMessage(message);
     });
-    view.onDidDispose(() => {
-      disposable.dispose();
+    const viewDisposable = view.onDidDispose(() => {
+      messageDisposable.dispose();
+      viewDisposable.dispose();
       this.view = undefined;
     });
   }
@@ -99,7 +98,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
   dispose(): void {
     this.disposed = true;
     this.view = undefined;
-    this.messageDisposable?.dispose();
   }
 
   private post(message: unknown): void {
@@ -169,6 +167,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
   private async handleMessage(message: SidebarIncomingMessage): Promise<void> {
     if (message.type === 'ready') {
       this.postState();
+      if (this.selectionValue.debugEnabled) {
+        this.post({
+          type: 'notification',
+          level: 'info',
+          message: '下次生成工程时会同时更新 Cortex-Debug 配置。'
+        });
+      }
       return;
     }
     if (message.type === 'saveSelection') {
@@ -199,7 +204,22 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
               openocdPath: this.selectionValue.flash.openocdPath
             }
           : undefined;
-        return generateMcuWorkflow(this.workflowHost(), profile, { flash });
+        const project = await generateMcuWorkflow(this.workflowHost(), profile, { flash });
+        if (!project.ok || !this.selectionValue.debugEnabled) {
+          return project;
+        }
+        const debug = await generateDebugWorkflow(
+          this.workflowHost(),
+          getFlashTargetProfile(this.selectionValue.flash.targetId),
+          getFlashProbeProfile(this.selectionValue.flash.probeId),
+          this.selectionValue.flash.openocdPath
+        );
+        return {
+          ...project,
+          ok: debug.ok,
+          files: [...project.files, ...debug.files],
+          message: `${project.message} ${debug.message}`
+        };
       });
       return;
     }

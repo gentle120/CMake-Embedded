@@ -214,6 +214,21 @@ function deviceOptions(vendor: DeviceVendor, series: DeviceSeries): SidebarOptio
   }));
 }
 
+export function optionsForSelection(selection: SidebarSelection): {
+  series: SidebarOption[];
+  devices: SidebarOption[];
+} {
+  const profiles = listDeviceProfiles();
+  const safe = nextMcuSelection(selection, {});
+  return {
+    series: listDeviceSeries(profiles, safe.mcu.vendor).map((series) => ({
+      value: series,
+      label: listDeviceProfilesForSeries(profiles, safe.mcu.vendor, series)[0]?.family ?? series
+    })),
+    devices: deviceOptions(safe.mcu.vendor, safe.mcu.series)
+  };
+}
+
 export function buildSidebarState(
   workspaceName: string,
   selection: SidebarSelection,
@@ -233,6 +248,7 @@ export function buildSidebarState(
     binDir: hit.binDir
   }));
   const choices = buildLinuxToolchainChoices(hits, selection.linux.toolchainFamily);
+  const mcuOptions = optionsForSelection(selection);
 
   return {
     workspaceName,
@@ -240,11 +256,8 @@ export function buildSidebarState(
       value: vendor,
       label: vendor === 'STM' ? 'STM32' : 'GD32'
     })),
-    series: listDeviceSeries(profiles, selection.mcu.vendor).map((series) => ({
-      value: series,
-      label: listDeviceProfilesForSeries(profiles, selection.mcu.vendor, series)[0]?.family ?? series
-    })),
-    devices: deviceOptions(selection.mcu.vendor, selection.mcu.series),
+    series: mcuOptions.series,
+    devices: mcuOptions.devices,
     flashTargets: listFlashTargetProfiles().map((target) => ({
       value: target.id,
       label: target.label,
