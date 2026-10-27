@@ -129,6 +129,13 @@ input:disabled {
   gap: 8px;
 }
 
+.workspace-summary {
+  margin: 8px 0 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
 .configuration-panel {
   display: grid;
   gap: 9px;
@@ -236,13 +243,10 @@ input:disabled {
 }
 
 .actions {
-  position: sticky;
-  bottom: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
   gap: 6px;
   padding: 10px 0 2px;
-  background: var(--vscode-sideBar-background);
 }
 
 .secondary-action,

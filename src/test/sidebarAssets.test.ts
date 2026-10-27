@@ -35,3 +35,10 @@ test('sidebar stylesheet covers the required responsive layout', () => {
   }
   assert.doesNotMatch(stylesheet, /https?:\/\//);
 });
+
+test('compiles sidebar assets into the packaged extension output', () => {
+  const compiledRoot = join(__dirname, '..', 'sidebar', 'webview');
+
+  assert.ok(readFileSync(join(compiledRoot, 'main.js'), 'utf8').includes('acquireVsCodeApi'));
+  assert.ok(readFileSync(join(compiledRoot, 'main.css'), 'utf8').includes('.configuration-panel'));
+});

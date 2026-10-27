@@ -3,7 +3,6 @@
   let state;
   let busy = false;
 
-  const app = document.getElementById('app');
   const workspaceName = document.getElementById('workspace-name');
   const status = document.getElementById('generation-status');
   const modeMcu = document.getElementById('mode-mcu');
@@ -13,6 +12,7 @@
   const generateButton = document.getElementById('generate-project');
   const resultRegion = document.getElementById('result-region');
   const generatedFiles = document.getElementById('generated-files');
+  const workspaceSummary = document.getElementById('workspace-summary');
 
   function post(message) {
     vscode.postMessage(message);
@@ -139,7 +139,7 @@
       }, '生成独立 OpenOCD 烧录脚本。'),
       optionCard('生成 Cortex-Debug 配置', selection.debugEnabled, (enabled) => {
         updateFromSelection({ ...selection, debugEnabled: enabled });
-      }, '写入 .vscode/launch.json。')
+      }, '')
     );
     const quickActions = document.createElement('div');
     quickActions.className = 'quick-actions';
@@ -227,6 +227,7 @@
     busy = false;
     status.textContent = resultValue.ok ? '已完成' : '失败';
     status.className = `status-badge ${resultValue.ok ? 'success' : 'error'}`;
+    workspaceSummary.textContent = resultValue.message;
     generatedFiles.replaceChildren();
     resultRegion.hidden = resultValue.files.length === 0;
     resultValue.files.forEach((file) => {
@@ -272,8 +273,9 @@
     } else if (message.type === 'operationFinished') {
       result(message.result);
     } else if (message.type === 'workspaceScan') {
-      status.textContent = `${message.sources} 个源文件`;
+      status.textContent = '扫描完成';
       status.className = 'status-badge';
+      workspaceSummary.textContent = `${message.sources} 个源文件 · ${message.includeDirs} 个头文件目录 · ${message.defines} 个宏`;
     } else if (message.type === 'notification') {
       status.textContent = message.message;
       status.className = `status-badge ${message.level === 'error' ? 'error' : ''}`;

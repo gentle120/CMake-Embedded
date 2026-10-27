@@ -80,7 +80,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
       if (!message) {
         return;
       }
-      void this.handleMessage(message);
+      void this.handleMessage(message).catch((error) => {
+        const text = error instanceof Error ? error.message : String(error);
+        this.post({ type: 'notification', level: 'error', message: text });
+      });
     });
     const viewDisposable = view.onDidDispose(() => {
       messageDisposable.dispose();
@@ -208,7 +211,16 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
       return;
     }
     if (message.type === 'saveSelection') {
-      await this.saveSelection(message.selection);
+      try {
+        await this.saveSelection(message.selection);
+      } catch (error) {
+        const text = error instanceof Error ? error.message : String(error);
+        this.post({
+          type: 'notification',
+          level: 'warning',
+          message: `无法保存侧栏选择：${text}`
+        });
+      }
       return;
     }
     if (message.type === 'scanWorkspace') {

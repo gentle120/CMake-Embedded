@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
 interface WebviewUriApi {
   cspSource: string;
   asWebviewUri(uri: unknown): unknown;
@@ -21,11 +24,18 @@ export function renderSidebarHtml(
   extensionUri: WebviewUri,
   nonce: string
 ): string {
+  const runtimeRoot = existsSync(join(__dirname, 'webview', 'main.js'))
+    ? 'out/sidebar'
+    : 'src/sidebar';
   const stylesheet = escapeAttribute(String(webview.asWebviewUri(
-    extensionUri.with({ path: `${extensionUri.path}/src/sidebar/webview/main.css` })
+    extensionUri.with({
+      path: `${extensionUri.path}/${runtimeRoot}/webview/main.css`
+    })
   )));
   const script = escapeAttribute(String(webview.asWebviewUri(
-    extensionUri.with({ path: `${extensionUri.path}/src/sidebar/webview/main.js` })
+    extensionUri.with({
+      path: `${extensionUri.path}/${runtimeRoot}/webview/main.js`
+    })
   )));
   const source = escapeAttribute(webview.cspSource);
   const safeNonce = escapeAttribute(nonce);
@@ -53,6 +63,9 @@ export function renderSidebarHtml(
       <button id="mode-linux" class="mode-button" type="button" aria-pressed="false">Linux / SoC</button>
     </section>
     <section id="configuration" class="configuration" aria-label="生成配置"></section>
+    <p id="workspace-summary" class="workspace-summary" aria-live="polite">
+      尚未扫描工作区
+    </p>
     <section id="result-region" class="result-region" hidden>
       <h2>已生成文件</h2>
       <ul id="generated-files"></ul>
