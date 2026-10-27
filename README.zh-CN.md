@@ -42,10 +42,6 @@ OpenOCD 烧录 target 独立选择，因此也可以给已有的自定义 CMake 
 烧录脚本。探针选择负责提供 OpenOCD interface 配置。GD32 F1/F4 target
 使用兼容的 STM32 F1/F4 OpenOCD target。
 
-### 演示
-
-![CMake-Embedded 演示](img/demo.png)
-
 当前芯片数据库支持常用的 STM32/GD32 F1、F4 型号和 STM32L4 型号。
 芯片选择列表会先按厂商分为 `STM` 和 `GD`，再按系列分为
 `STMF1x`、`STMF4x`、`STML4x`、`GDF1x` 和 `GDF4x`。
