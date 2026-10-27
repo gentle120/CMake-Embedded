@@ -62,3 +62,40 @@ test('bootstrap filters parts and annotates detected toolchains', () => {
   assert.ok(state.linuxToolchains.some((toolchain) => toolchain.value === 'arm'));
   assert.match(state.linuxToolchains.find((toolchain) => toolchain.value === 'arm')?.detail ?? '', /PATH/);
 });
+
+test('defaults ordinary C/C++ projects to a C11/C++17 executable', () => {
+  const selection = defaultSidebarSelection();
+
+  assert.equal(selection.native.targetType, 'executable');
+  assert.equal(selection.native.cStandard, 11);
+  assert.equal(selection.native.cxxStandard, 17);
+});
+
+test('accepts native mode and rejects unsupported native options', () => {
+  const selection = sanitizeSidebarSelection({
+    ...defaultSidebarSelection(),
+    mode: 'native',
+    native: {
+      targetType: 'shared',
+      cStandard: 23,
+      cxxStandard: 23
+    }
+  });
+  const invalid = sanitizeSidebarSelection({
+    ...defaultSidebarSelection(),
+    mode: 'native',
+    native: {
+      targetType: 'plugin',
+      cStandard: 99,
+      cxxStandard: 99
+    }
+  });
+
+  assert.equal(selection.mode, 'native');
+  assert.equal(selection.native.targetType, 'shared');
+  assert.equal(selection.native.cStandard, 23);
+  assert.equal(selection.native.cxxStandard, 23);
+  assert.equal(invalid.native.targetType, 'executable');
+  assert.equal(invalid.native.cStandard, 11);
+  assert.equal(invalid.native.cxxStandard, 17);
+});

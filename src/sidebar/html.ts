@@ -72,6 +72,9 @@ export function renderSidebarHtml(
       <button id="mode-linux" class="mode-button" type="button" aria-pressed="false">
         <span class="ui-icon" data-icon="device-desktop" aria-hidden="true"></span><span>Linux / SoC</span>
       </button>
+      <button id="mode-native" class="mode-button" type="button" aria-pressed="false">
+        <span class="ui-icon" data-icon="code" aria-hidden="true"></span><span>桌面 C/C++</span>
+      </button>
     </section>
     <section class="workspace-card" aria-label="当前工作区">
       <span class="ui-icon" data-icon="folder" aria-hidden="true"></span>

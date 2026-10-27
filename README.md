@@ -2,23 +2,25 @@
 
 # CMake-Embedded
 
-一款用于 VS Code 的 CMake 工程生成插件，支持两个**互相独立**的方向：
+一款用于 VS Code 的 CMake 工程生成插件，支持三个**互相独立**的方向：
 
 - **MCU 固件**：裸机 STM32 / GD32 工程，生成链接脚本、GNU 启动文件、工具链和 CMake。
 - **Linux / SoC 应用**：交叉编译工程，目标为龙芯 (loongarch64)、ARM (aarch64)、
   32 位 ARM (armv7 hard-float) 或 RISC-V (riscv64)。
+- **桌面 C/C++**：使用本机编译器生成普通可执行文件、静态库或动态库。
 
-两个方向都会扫描当前打开的工程目录，收集 C/C++ 源文件、头文件目录和宏，
+三个方向都会扫描当前打开的工程目录，收集 C/C++ 源文件、头文件目录和宏，
 然后生成可直接构建的 CMake 工程。
 
 ## 侧栏快速生成
 
 安装插件后，VS Code 左侧活动栏会显示 **CMake-Embedded** 图标。打开工程目录，
-点击该图标即可在侧栏中切换 **MCU 固件**和 **Linux / SoC**，直接选择器件或
-交叉工具链并点击“生成工程”。
+点击该图标即可在侧栏中切换 **MCU 固件**、**Linux / SoC** 和
+**桌面 C/C++**，选择目标后点击“生成工程”。
 
 - 选择结果按工作区保存，下次打开自动恢复。
 - MCU 页面可同时生成 `flash.py` 和 Cortex-Debug 配置。
+- 桌面 C/C++ 页面可选择可执行文件、静态库或动态库以及语言标准。
 - 扫描工作区后可查看源文件、头文件目录和宏的数量。
 - 原有命令面板入口全部保留，可继续单独生成烧录脚本或调试配置。
 
@@ -28,8 +30,47 @@
 | --- | --- | --- |
 | `CMake-Embedded: Generate MCU Project` | MCU | 按命令面板流程选择厂商、系列和型号，再生成裸机工程 |
 | `CMake-Embedded: Generate Linux Project` | Linux | 选择交叉工具链，再生成交叉编译工程 |
+| `CMake-Embedded: Generate C/C++ Project` | 桌面 | 选择目标类型和语言标准，生成普通 CMake 工程 |
 | `CMake-Embedded: Generate OpenOCD Flash Script` | MCU | 仅生成 `flash.py` |
 | `CMake-Embedded: Generate Cortex-Debug Configuration` | MCU | 仅生成 `.vscode/launch.json` 调试配置 |
+
+---
+
+## 桌面 C/C++ 方向
+
+### 功能
+
+- 使用本机 GCC、Clang 或 MSVC 工具链，不生成交叉工具链文件。
+- 自动扫描 C/C++/汇编源文件、头文件目录和宏。
+- 支持可执行文件、静态库和动态库。
+- 支持 C11/C17/C23 与 C++14/C++17/C++20/C++23。
+- 生成 Debug、Release 的 Ninja 预设和编译数据库。
+- 配置 CMake Tools 与 C/C++ IntelliSense。
+- 保留 `CMAKE-EMBEDDED USER CODE` 区域，可自行添加依赖库。
+
+### 使用
+
+1. 打开普通 C/C++ 工程目录。
+2. 在侧栏切换到 **桌面 C/C++**。
+3. 选择目标类型和语言标准，点击“生成工程”。
+4. 使用生成的预设配置并构建：
+
+   ```powershell
+   cmake --preset debug
+   cmake --build --preset debug
+   ```
+
+### 生成后的目录结构
+
+```text
+<project>/
+├── CMakeLists.txt
+├── CMakePresets.json
+├── .native-cmake.json
+└── .vscode/
+    ├── settings.json
+    └── c_cpp_properties.json
+```
 
 ---
 

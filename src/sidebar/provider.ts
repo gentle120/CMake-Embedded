@@ -9,11 +9,13 @@ import {
   generateFlashWorkflow,
   generateLinuxWorkflow,
   generateMcuWorkflow,
+  generateNativeWorkflow,
   type ProjectWorkflowHost,
   type WorkflowResult
 } from '../generation/workflow';
 import { discoverLinuxToolchains } from '../linux/discovery';
 import { createLinuxToolchain } from '../linux/toolchainGenerator';
+import { describeNativeProject } from '../native/projectStructure';
 import { scanProject } from '../scanner/projectScanner';
 import { renderSidebarHtml } from './html';
 import { parseIncomingMessage, type SidebarIncomingMessage } from './messages';
@@ -237,6 +239,45 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
     }
     if (message.type === 'generateProject') {
       await this.runGeneration('正在生成工程', async () => {
+        if (this.selectionValue.mode === 'native') {
+          const root = this.dependencies.workflow.workspaceRoot();
+          if (!root) {
+            return {
+              kind: 'native' as const,
+              ok: false,
+              files: [],
+              message: '请先打开一个 C/C++ 工程目录。'
+            };
+          }
+          const project = await this.dependencies.workflow.scanWorkspace(root);
+          if (!project) {
+            return {
+              kind: 'native' as const,
+              ok: false,
+              cancelled: true,
+              files: [],
+              message: '工作区扫描已取消。'
+            };
+          }
+          if (project.sources.length === 0) {
+            return {
+              kind: 'native' as const,
+              ok: false,
+              files: [],
+              message: '工作区中没有找到 C/C++ 或汇编源文件。'
+            };
+          }
+          const structure = describeNativeProject(
+            project,
+            root.replace(/\\/g, '/').split('/').pop()?.replace(/[^A-Za-z0-9_-]/g, '_') || 'app',
+            {
+              targetType: this.selectionValue.native.targetType,
+              cStandard: this.selectionValue.native.cStandard,
+              cxxStandard: this.selectionValue.native.cxxStandard
+            }
+          );
+          return generateNativeWorkflow(this.workflowHost(), structure);
+        }
         if (this.selectionValue.mode === 'linux') {
           return generateLinuxWorkflow(this.workflowHost(), this.toolchainForSelection());
         }

@@ -7,6 +7,7 @@
   const status = document.getElementById('generation-status');
   const modeMcu = document.getElementById('mode-mcu');
   const modeLinux = document.getElementById('mode-linux');
+  const modeNative = document.getElementById('mode-native');
   const configuration = document.getElementById('configuration');
   const scanButton = document.getElementById('scan-workspace');
   const generateButton = document.getElementById('generate-project');
@@ -269,21 +270,86 @@
     configuration.replaceChildren(panel);
   }
 
+  function renderNative() {
+    const panel = document.createElement('div');
+    panel.className = 'configuration-panel';
+    const selection = state.selection;
+    const section = document.createElement('section');
+    section.className = 'control-section';
+    section.append(sectionHeader('桌面 C/C++', '使用本机编译器生成普通 CMake 工程。', 'code'));
+    const targetType = selectField(
+      '目标类型',
+      [
+        { value: 'executable', label: '可执行文件' },
+        { value: 'static', label: '静态库' },
+        { value: 'shared', label: '动态库' }
+      ],
+      selection.native.targetType,
+      (value) => updateFromSelection({
+        ...selection,
+        native: { ...selection.native, targetType: value }
+      })
+    );
+    const standards = document.createElement('div');
+    standards.className = 'target-grid';
+    standards.append(
+      selectField(
+        'C 标准',
+        [
+          { value: '11', label: 'C11' },
+          { value: '17', label: 'C17' },
+          { value: '23', label: 'C23' }
+        ],
+        String(selection.native.cStandard),
+        (value) => updateFromSelection({
+          ...selection,
+          native: { ...selection.native, cStandard: Number(value) }
+        })
+      ),
+      selectField(
+        'C++ 标准',
+        [
+          { value: '14', label: 'C++14' },
+          { value: '17', label: 'C++17' },
+          { value: '20', label: 'C++20' },
+          { value: '23', label: 'C++23' }
+        ],
+        String(selection.native.cxxStandard),
+        (value) => updateFromSelection({
+          ...selection,
+          native: { ...selection.native, cxxStandard: Number(value) }
+        })
+      )
+    );
+    section.append(targetType, standards);
+    panel.append(section);
+    const note = document.createElement('p');
+    note.className = 'empty-note';
+    note.textContent = '将扫描当前工作区并生成 CMakeLists.txt、Debug/Release 预设和 C/C++ IntelliSense 配置。';
+    panel.append(note);
+    configuration.replaceChildren(panel);
+  }
+
   function render() {
     if (!state) return;
     workspaceName.textContent = state.workspaceName || '当前工作区';
-    const isMcu = state.selection.mode === 'mcu';
+    const mode = state.selection.mode;
+    const isMcu = mode === 'mcu';
+    const isNative = mode === 'native';
     modeMcu.setAttribute('aria-pressed', String(isMcu));
-    modeLinux.setAttribute('aria-pressed', String(!isMcu));
+    modeLinux.setAttribute('aria-pressed', String(mode === 'linux'));
+    modeNative.setAttribute('aria-pressed', String(isNative));
     modeMcu.disabled = busy;
     modeLinux.disabled = busy;
+    modeNative.disabled = busy;
     scanButton.disabled = busy;
     generateButton.disabled = busy;
-    [modeMcu, modeLinux, scanButton, generateButton].forEach((control) => {
+    [modeMcu, modeLinux, modeNative, scanButton, generateButton].forEach((control) => {
       control.disabled = busy;
     });
     configuration.hidden = false;
     if (isMcu) renderMcu();
+    else if (isNative) renderNative();
     else renderLinux();
   }
 
@@ -325,6 +391,11 @@
   modeLinux.addEventListener('click', () => {
     if (!state || busy) return;
     updateFromSelection({ ...state.selection, mode: 'linux' });
+  });
+
+  modeNative.addEventListener('click', () => {
+    if (!state || busy) return;
+    updateFromSelection({ ...state.selection, mode: 'native' });
   });
 
   scanButton.addEventListener('click', () => {

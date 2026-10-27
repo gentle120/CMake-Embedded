@@ -64,6 +64,10 @@
         "title": "CMake-Embedded: Generate Linux Project"
       },
       {
+        "command": "cmakeEmbedded.generateNative",
+        "title": "CMake-Embedded: Generate C/C++ Project"
+      },
+      {
         "command": "cmakeEmbedded.generateFlashScript",
         "title": "CMake-Embedded: Generate OpenOCD Flash Script"
       },

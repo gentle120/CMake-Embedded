@@ -14,6 +14,10 @@ import { generateSyscalls, generateSysmem, runtimeSourceNames } from '../generat
 import { generateToolchainFile } from '../generator/toolchainGenerator';
 import { configureCppProperties } from '../integration/cppProperties';
 import { getWorkspaceSettings } from '../integration/workspaceSettings';
+import {
+  configureNativeCppProperties,
+  getNativeWorkspaceSettings
+} from '../native/integration';
 import { generateLinuxCMakeLists } from '../linux/cmakeGenerator';
 import { generateLinuxProjectConfig } from '../linux/configGenerator';
 import { configureLinuxCppProperties, getLinuxWorkspaceSettings } from '../linux/integration';
@@ -27,6 +31,9 @@ import {
   type LinuxToolchain,
   type LinuxToolchainHit
 } from '../linux/types';
+import { generateNativeCMakeLists } from '../native/cmakeGenerator';
+import { generateNativeCMakePresets } from '../native/presetsGenerator';
+import { nativeConfigFileName, type NativeProjectStructure } from '../native/types';
 import type { ProjectDescription } from '../scanner/projectScanner';
 import {
   findExistingFiles,
@@ -43,7 +50,7 @@ export interface ProjectWorkflowHost {
 }
 
 export interface WorkflowResult {
-  kind: 'mcu' | 'linux' | 'flash' | 'debug';
+  kind: 'mcu' | 'linux' | 'native' | 'flash' | 'debug';
   ok: boolean;
   cancelled?: boolean;
   files: string[];
@@ -352,6 +359,97 @@ export async function generateLinuxWorkflow(
       { path: settingsPath, content: '' }
     ].map((file) => toWorkspacePath(root, file.path)),
     message: `已生成 Linux 交叉编译工程，共扫描到 ${structure.sources.length} 个源文件。`
+  };
+}
+
+export async function generateNativeWorkflow(
+  host: ProjectWorkflowHost,
+  structure: NativeProjectStructure
+): Promise<WorkflowResult> {
+  const root = host.workspaceRoot();
+  if (!root) {
+    return {
+      kind: 'native',
+      ok: false,
+      files: [],
+      message: '请先打开一个 C/C++ 工程目录。'
+    };
+  }
+  const cmakePath = join(root, 'CMakeLists.txt');
+  const existingCMakeContent = await exists(cmakePath)
+    ? await readFile(cmakePath, 'utf8')
+    : undefined;
+  const generatedFiles: GeneratedFile[] = [
+    {
+      path: cmakePath,
+      content: generateNativeCMakeLists(structure, existingCMakeContent)
+    },
+    {
+      path: join(root, 'CMakePresets.json'),
+      content: generateNativeCMakePresets()
+    }
+  ];
+  const configPath = join(root, nativeConfigFileName);
+  const settingsPath = join(root, '.vscode', 'settings.json');
+  const cppPropertiesPath = join(root, '.vscode', 'c_cpp_properties.json');
+  const existingFiles = await findExistingFiles([
+    ...generatedFiles.map((file) => file.path),
+    settingsPath,
+    cppPropertiesPath,
+    configPath
+  ]);
+  if (existingFiles.length > 0 && !(await host.confirmOverwrite(existingFiles))) {
+    return {
+      kind: 'native',
+      ok: false,
+      cancelled: true,
+      files: [],
+      message: '已取消覆盖。'
+    };
+  }
+
+  const configFile: GeneratedFile = {
+    path: configPath,
+    content: `${JSON.stringify({
+      projectName: structure.targetName,
+      kind: 'native',
+      targetType: structure.targetType,
+      structure: {
+        sourceCount: structure.sources.length,
+        includeDirs: structure.includeDirs,
+        defines: structure.defines,
+        cStandard: structure.cStandard,
+        cxxStandard: structure.cxxStandard
+      },
+      defines: structure.defines,
+      generatedFiles: [
+        ...generatedFiles.map((file) => toWorkspacePath(root, file.path)),
+        toWorkspacePath(root, settingsPath),
+        toWorkspacePath(root, cppPropertiesPath)
+      ],
+      overwrittenFiles: existingFiles.map((filePath) => toWorkspacePath(root, filePath))
+    }, null, 2)}\n`
+  };
+  const cppPropertiesContent = await exists(cppPropertiesPath)
+    ? await readFile(cppPropertiesPath, 'utf8')
+    : undefined;
+  const cppPropertiesFile: GeneratedFile = {
+    path: cppPropertiesPath,
+    content: configureNativeCppProperties(cppPropertiesContent)
+  };
+  await mkdir(join(root, '.vscode'), { recursive: true });
+  await writeGeneratedFiles([...generatedFiles, configFile, cppPropertiesFile]);
+  await host.updateSettings(getNativeWorkspaceSettings());
+  return {
+    kind: 'native',
+    ok: true,
+    files: [
+      ...generatedFiles,
+      configFile,
+      cppPropertiesFile,
+      { path: settingsPath, content: '' }
+    ].map((file) => toWorkspacePath(root, file.path)),
+    message: `已生成普通 C/C++ CMake 工程，共扫描到 ${structure.sources.length} 个源文件。`
   };
 }
 

@@ -10,6 +10,7 @@ test('uses the extension name in command and settings display titles', () => {
     [
       'CMake-Embedded: Generate MCU Project',
       'CMake-Embedded: Generate Linux Project',
+      'CMake-Embedded: Generate C/C++ Project',
       'CMake-Embedded: Generate OpenOCD Flash Script',
       'CMake-Embedded: Generate Cortex-Debug Configuration'
     ]

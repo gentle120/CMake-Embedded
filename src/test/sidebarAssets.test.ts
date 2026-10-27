@@ -13,7 +13,8 @@ test('sidebar renderer wires every supported command', () => {
     'saveSelection',
     'generateProject',
     'generateFlashScript',
-    'generateDebugConfiguration'
+    'generateDebugConfiguration',
+    'renderNative'
   ]) {
     assert.match(script, new RegExp(command));
   }
@@ -64,7 +65,8 @@ test('sidebar uses local inline mask icons for actions and status', () => {
     'settings-gear',
     'pass',
     'warning',
-    'check'
+    'check',
+    'code'
   ]) {
     assert.match(stylesheet, new RegExp(`data-icon="${icon}"`));
   }

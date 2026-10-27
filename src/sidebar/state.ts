@@ -18,7 +18,7 @@ import {
   type LinuxToolchainHit
 } from '../linux/types';
 
-export type SidebarMode = 'mcu' | 'linux';
+export type SidebarMode = 'mcu' | 'linux' | 'native';
 
 export interface SidebarFlashSelection {
   enabled: boolean;
@@ -36,6 +36,11 @@ export interface SidebarSelection {
   };
   linux: {
     toolchainFamily: LinuxToolchainFamily;
+  };
+  native: {
+    targetType: 'executable' | 'static' | 'shared';
+    cStandard: 11 | 17 | 23;
+    cxxStandard: 14 | 17 | 20 | 23;
   };
   debugEnabled: boolean;
   flash: SidebarFlashSelection;
@@ -120,6 +125,11 @@ export function defaultSidebarSelection(): SidebarSelection {
     linux: {
       toolchainFamily: defaultLinuxToolchain
     },
+    native: {
+      targetType: 'executable',
+      cStandard: 11,
+      cxxStandard: 17
+    },
     debugEnabled: false,
     flash: {
       enabled: false,
@@ -137,6 +147,7 @@ export function sanitizeSidebarSelection(
   const record = asRecord(value);
   const mcu = asRecord(record?.mcu);
   const linux = asRecord(record?.linux);
+  const native = asRecord(record?.native);
   const flash = asRecord(record?.flash);
   const vendor = isVendor(mcu?.vendor) ? mcu.vendor : fallback.mcu.vendor;
   const series = isSeries(mcu?.series) ? mcu.series : fallback.mcu.series;
@@ -146,7 +157,7 @@ export function sanitizeSidebarSelection(
     : fallback.linux.toolchainFamily;
 
   return {
-    mode: record?.mode === 'mcu' || record?.mode === 'linux'
+    mode: record?.mode === 'mcu' || record?.mode === 'linux' || record?.mode === 'native'
       ? record.mode
       : fallback.mode,
     mcu: {
@@ -156,6 +167,17 @@ export function sanitizeSidebarSelection(
     },
     linux: {
       toolchainFamily: family
+    },
+    native: {
+      targetType: native?.targetType === 'static' || native?.targetType === 'shared'
+        ? native.targetType
+        : 'executable',
+      cStandard: native?.cStandard === 17 || native?.cStandard === 23
+        ? native.cStandard
+        : 11,
+      cxxStandard: native?.cxxStandard === 14 || native?.cxxStandard === 20 || native?.cxxStandard === 23
+        ? native.cxxStandard
+        : 17
     },
     debugEnabled: typeof record?.debugEnabled === 'boolean'
       ? record.debugEnabled

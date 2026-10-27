@@ -16,6 +16,8 @@ import {
   generateFlashWorkflow,
   generateLinuxWorkflow,
   generateMcuWorkflow,
+  generateNativeWorkflow,
+  projectNameFromRoot,
   type ProjectWorkflowHost,
   type WorkflowResult
 } from './generation/workflow';
@@ -23,6 +25,7 @@ import { readLinuxProjectConfig } from './linux/projectConfig';
 import { discoverLinuxToolchains } from './linux/discovery';
 import { selectLinuxToolchain } from './linux/selection';
 import { linuxConfigFileName } from './linux/types';
+import { describeNativeProject } from './native/projectStructure';
 import { scanProject, ScanCancelledError, type ProjectDescription } from './scanner/projectScanner';
 import { SidebarProvider } from './sidebar/provider';
 
@@ -326,6 +329,54 @@ async function generateLinuxProject(): Promise<void> {
   reportWorkflowResult(await generateLinuxWorkflow(createWorkflowHost(), toolchain));
 }
 
+async function generateNativeProject(): Promise<void> {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!root) {
+    vscode.window.showErrorMessage('请先打开一个 C/C++ 工程目录。');
+    return;
+  }
+  const project = await scanWorkspace(root);
+  if (!project) {
+    return;
+  }
+  if (project.sources.length === 0) {
+    vscode.window.showErrorMessage('工作区中没有找到 C/C++ 或汇编源文件。');
+    return;
+  }
+  const selection = await vscode.window.showQuickPick(
+    [
+      { label: '可执行文件', value: 'executable' as const },
+      { label: '静态库', value: 'static' as const },
+      { label: '动态库', value: 'shared' as const }
+    ],
+    { placeHolder: '选择普通 C/C++ 目标类型' }
+  );
+  if (!selection) {
+    return;
+  }
+  const standardSelection = await vscode.window.showQuickPick(
+    [
+      { label: 'C11 / C++17（推荐）', cStandard: 11 as const, cxxStandard: 17 as const },
+      { label: 'C17 / C++20', cStandard: 17 as const, cxxStandard: 20 as const },
+      { label: 'C23 / C++23', cStandard: 23 as const, cxxStandard: 23 as const }
+    ],
+    { placeHolder: '选择 C / C++ 语言标准' }
+  );
+  if (!standardSelection) {
+    return;
+  }
+  const structure = describeNativeProject(
+    project,
+    projectNameFromRoot(root),
+    {
+      targetType: selection.value,
+      cStandard: standardSelection.cStandard,
+      cxxStandard: standardSelection.cxxStandard
+    }
+  );
+  reportWorkflowResult(await generateNativeWorkflow(createWorkflowHost(), structure));
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   const host = createWorkflowHost();
   const sidebarProvider = new SidebarProvider(context, {
@@ -343,6 +394,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('cmakeEmbedded.generateMcu', () => generateProject()),
     vscode.commands.registerCommand('cmakeEmbedded.generateLinux', () => generateLinuxProject()),
+    vscode.commands.registerCommand('cmakeEmbedded.generateNative', () => generateNativeProject()),
     vscode.commands.registerCommand('cmakeEmbedded.generateFlashScript', () => generateFlashScriptOnly()),
     vscode.commands.registerCommand(
       'cmakeEmbedded.generateDebugConfiguration',

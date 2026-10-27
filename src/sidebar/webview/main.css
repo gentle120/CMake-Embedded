@@ -202,13 +202,17 @@ input:disabled {
 .mode-switcher {
   overflow: hidden;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3px;
   padding: 3px;
   margin-bottom: 9px;
   border: 1px solid var(--vscode-panel-border);
   border-radius: 4px;
   background: color-mix(in srgb, var(--vscode-editorWidget-background) 46%, transparent);
+}
+
+.mode-switcher #mode-native {
+  grid-column: 1 / -1;
 }
 
 .mode-button {
@@ -795,6 +799,10 @@ input:disabled {
 
 .ui-icon[data-icon="check"] {
   --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E");
+}
+
+.ui-icon[data-icon="code"] {
+  --icon: url("[image omitted]%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m8 6-6 6 6 6M16 6l6 6-6 6M14 4l-4 16'/%3E%3C/svg%3E");
 }
 
 @keyframes status-pulse {
