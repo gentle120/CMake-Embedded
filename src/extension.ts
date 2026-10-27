@@ -20,9 +20,11 @@ import {
   type WorkflowResult
 } from './generation/workflow';
 import { readLinuxProjectConfig } from './linux/projectConfig';
+import { discoverLinuxToolchains } from './linux/discovery';
 import { selectLinuxToolchain } from './linux/selection';
 import { linuxConfigFileName } from './linux/types';
 import { scanProject, ScanCancelledError, type ProjectDescription } from './scanner/projectScanner';
+import { SidebarProvider } from './sidebar/provider';
 
 async function scanWorkspace(root: string): Promise<ProjectDescription | undefined> {
   try {
@@ -325,6 +327,19 @@ async function generateLinuxProject(): Promise<void> {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  const host = createWorkflowHost();
+  const sidebarProvider = new SidebarProvider(context, {
+    workflow: host,
+    confirmOverwrite: async (files) => {
+      const action = await vscode.window.showWarningMessage(
+        `已有 ${files.length} 个生成文件存在，是否覆盖？`,
+        '覆盖',
+        '取消'
+      );
+      return action === '覆盖';
+    },
+    discoverToolchains: () => discoverLinuxToolchains()
+  });
   context.subscriptions.push(
     vscode.commands.registerCommand('cmakeEmbedded.generateMcu', () => generateProject()),
     vscode.commands.registerCommand('cmakeEmbedded.generateLinux', () => generateLinuxProject()),
@@ -332,7 +347,17 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(
       'cmakeEmbedded.generateDebugConfiguration',
       () => generateDebugConfigurationOnly()
-    )
+    ),
+    vscode.window.registerWebviewViewProvider(SidebarProvider.viewType, sidebarProvider, {
+      webviewOptions: { retainContextWhenHidden: true }
+    }),
+    sidebarProvider,
+    vscode.workspace.onDidChangeWorkspaceFolders(() => sidebarProvider.refresh()),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('cmakeEmbedded')) {
+        sidebarProvider.refresh();
+      }
+    })
   );
 }
 

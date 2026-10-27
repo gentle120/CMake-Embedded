@@ -21,7 +21,29 @@
   ],
   "main": "./out/extension.js",
   "icon": "images/icon-electric.png",
+  "readme": "README.md",
+  "activationEvents": [
+    "onView:cmakeEmbedded.sidebar"
+  ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cmakeEmbedded",
+          "title": "CMake-Embedded",
+          "icon": "images/activity-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "cmakeEmbedded": [
+        {
+          "type": "webview",
+          "id": "cmakeEmbedded.sidebar",
+          "name": "生成配置"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "cmakeEmbedded.generateMcu",
