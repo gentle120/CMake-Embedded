@@ -44,7 +44,7 @@ export function renderSidebarHtml(
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${source}; script-src 'nonce-${safeNonce}';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${source}; img-src ${source} data:; font-src ${source}; script-src 'nonce-${safeNonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="${stylesheet}">
   <title>CMake 工程生成</title>
@@ -52,15 +52,30 @@ export function renderSidebarHtml(
 <body>
   <main id="app">
     <header class="app-header">
-      <div>
-        <h1>CMake 工程生成</h1>
-        <p id="workspace-name" class="workspace-name">正在读取工作区</p>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <span class="ui-icon" data-icon="chip"></span>
+        </div>
+        <div class="brand-copy">
+          <span class="brand-kicker">CMake-Embedded</span>
+          <h1>工程生成台</h1>
+        </div>
       </div>
-      <span id="generation-status" class="status-badge" role="status" aria-live="polite">就绪</span>
+      <span id="generation-status" class="status-badge" role="status" aria-live="polite">
+        <span class="status-dot"></span><span class="status-text">就绪</span>
+      </span>
     </header>
     <section id="mode-switcher" class="mode-switcher" aria-label="工程类型">
-      <button id="mode-mcu" class="mode-button" type="button" aria-pressed="true">MCU 固件</button>
-      <button id="mode-linux" class="mode-button" type="button" aria-pressed="false">Linux / SoC</button>
+      <button id="mode-mcu" class="mode-button" type="button" aria-pressed="true">
+        <span class="ui-icon" data-icon="chip" aria-hidden="true"></span><span>MCU 固件</span>
+      </button>
+      <button id="mode-linux" class="mode-button" type="button" aria-pressed="false">
+        <span class="ui-icon" data-icon="device-desktop" aria-hidden="true"></span><span>Linux / SoC</span>
+      </button>
+    </section>
+    <section class="workspace-card" aria-label="当前工作区">
+      <span class="ui-icon" data-icon="folder" aria-hidden="true"></span>
+      <span id="workspace-name" class="workspace-name">正在读取工作区</span>
     </section>
     <section id="configuration" class="configuration" aria-label="生成配置"></section>
     <p id="workspace-summary" class="workspace-summary" aria-live="polite">
@@ -71,8 +86,12 @@ export function renderSidebarHtml(
       <ul id="generated-files"></ul>
     </section>
     <footer id="actions" class="actions">
-      <button id="scan-workspace" class="secondary-action" type="button">扫描工作区</button>
-      <button id="generate-project" class="primary-action" type="button">生成工程</button>
+      <button id="scan-workspace" class="secondary-action" type="button">
+        <span class="ui-icon" data-icon="refresh" aria-hidden="true"></span><span>扫描工作区</span>
+      </button>
+      <button id="generate-project" class="primary-action" type="button">
+        <span class="ui-icon" data-icon="play" aria-hidden="true"></span><span>生成工程</span>
+      </button>
     </footer>
   </main>
   <script nonce="${safeNonce}" src="${script}"></script>

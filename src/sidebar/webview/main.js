@@ -18,6 +18,33 @@
     vscode.postMessage(message);
   }
 
+  function icon(name) {
+    const element = document.createElement('span');
+    element.className = 'ui-icon';
+    element.dataset.icon = name;
+    element.setAttribute('aria-hidden', 'true');
+    return element;
+  }
+
+  function sectionHeader(title, description, iconName) {
+    const header = document.createElement('div');
+    header.className = 'section-header';
+    if (iconName) {
+      header.append(icon(iconName));
+    }
+    const copy = document.createElement('div');
+    const heading = document.createElement('h2');
+    heading.textContent = title;
+    copy.append(heading);
+    if (description) {
+      const note = document.createElement('p');
+      note.textContent = description;
+      copy.append(note);
+    }
+    header.append(copy);
+    return header;
+  }
+
   function option(value, label, description) {
     const element = document.createElement('option');
     element.value = value;
@@ -59,27 +86,38 @@
     return options.find((item) => item.value === value);
   }
 
-  function optionCard(label, checked, change, description) {
-    const card = document.createElement('label');
-    card.className = 'option-card';
-    const row = document.createElement('span');
-    row.className = 'option-row';
+  function toggleRow(label, checked, change, description, iconName) {
+    const row = document.createElement('label');
+    row.className = 'toggle-row';
+    const leading = document.createElement('span');
+    leading.className = 'toggle-leading';
+    if (iconName) {
+      leading.append(icon(iconName));
+    }
     const text = document.createElement('span');
-    text.textContent = label;
+    text.className = 'toggle-copy';
+    const title = document.createElement('span');
+    title.className = 'toggle-title';
+    title.textContent = label;
+    text.append(title);
     if (description) {
       const detail = document.createElement('small');
       detail.className = 'field-detail';
       detail.textContent = description;
-      text.append(document.createElement('br'), detail);
+      text.append(detail);
     }
+    leading.append(text);
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
+    checkbox.className = 'switch-input';
     checkbox.checked = checked;
     checkbox.disabled = busy;
     checkbox.addEventListener('change', () => change(checkbox.checked));
-    row.append(text, checkbox);
-    card.append(row);
-    return card;
+    const switchTrack = document.createElement('span');
+    switchTrack.className = 'switch-track';
+    switchTrack.append(checkbox, document.createElement('span'));
+    row.append(leading, switchTrack);
+    return row;
   }
 
   function saveSelection(selection) {
@@ -93,11 +131,11 @@
     post({ type: 'saveSelection', selection });
   }
 
-  function quickAction(label, type) {
+  function quickAction(label, type, iconName) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'quick-action';
-    button.textContent = label;
+    button.append(icon(iconName), document.createTextNode(label));
     button.disabled = busy;
     button.addEventListener('click', () => {
       if (!busy) post({ type });
@@ -109,7 +147,12 @@
     const panel = document.createElement('div');
     panel.className = 'configuration-panel';
     const selection = state.selection;
-    panel.append(
+    const modelCard = document.createElement('section');
+    modelCard.className = 'control-section target-section';
+    modelCard.append(sectionHeader('目标配置', '选择构建芯片与目标系列。', 'chip'));
+    const targetGrid = document.createElement('div');
+    targetGrid.className = 'target-grid';
+    targetGrid.append(
       selectField('厂商', state.vendors, selection.mcu.vendor, () => {}),
       selectField('系列', state.series, selection.mcu.series, (value) => {
         updateFromSelection({ ...selection, mcu: { ...selection.mcu, series: value } });
@@ -118,8 +161,9 @@
         updateFromSelection({ ...selection, mcu: { ...selection.mcu, part: value } });
       })
     );
+    modelCard.append(targetGrid);
 
-    const vendorSelect = panel.querySelector('select');
+    const vendorSelect = modelCard.querySelector('select');
     if (vendorSelect) {
       vendorSelect.addEventListener('change', () => {
         updateFromSelection({ ...selection, mcu: { ...selection.mcu, vendor: vendorSelect.value } });
@@ -127,32 +171,48 @@
     }
     const device = selectedOption(state.devices, selection.mcu.part);
     if (device) {
-      const detail = document.createElement('p');
-      detail.className = 'field-detail';
-      detail.textContent = `${device.description || ''}${device.detail ? ` · ${device.detail}` : ''}`;
-      panel.append(detail);
+      const summary = document.createElement('div');
+      summary.className = 'device-summary';
+      const name = document.createElement('strong');
+      name.textContent = selection.mcu.part;
+      const meta = document.createElement('span');
+      meta.textContent = `${device.description || ''}${device.detail ? ` · ${device.detail}` : ''}`;
+      summary.append(name, meta);
+      modelCard.append(summary);
     }
+    panel.append(modelCard);
 
-    panel.append(
-      optionCard('生成 flash.py', selection.flash.enabled, (enabled) => {
+    const extrasSection = document.createElement('section');
+    extrasSection.className = 'control-section';
+    extrasSection.append(sectionHeader('附加功能', '与工程同时生成的开发工具配置。', 'extensions'));
+    const toggles = document.createElement('div');
+    toggles.className = 'toggle-list';
+    toggles.append(
+      toggleRow('生成 flash.py', selection.flash.enabled, (enabled) => {
         updateFromSelection({ ...selection, flash: { ...selection.flash, enabled } });
-      }, '生成独立 OpenOCD 烧录脚本。'),
-      optionCard('生成 Cortex-Debug 配置', selection.debugEnabled, (enabled) => {
+      }, 'OpenOCD 烧录脚本', 'zap'),
+      toggleRow('Cortex-Debug', selection.debugEnabled, (enabled) => {
         updateFromSelection({ ...selection, debugEnabled: enabled });
-      }, '')
+      }, 'launch.json 调试配置', 'debug-alt')
     );
+    extrasSection.append(toggles);
     const quickActions = document.createElement('div');
     quickActions.className = 'quick-actions';
     quickActions.append(
-      quickAction('仅生成 flash.py', 'generateFlashScript'),
-      quickAction('仅生成 Debug 配置', 'generateDebugConfiguration')
+      quickAction('仅 flash.py', 'generateFlashScript', 'zap'),
+      quickAction('仅 Debug', 'generateDebugConfiguration', 'debug-alt')
     );
-    panel.append(quickActions);
+    extrasSection.append(quickActions);
+    panel.append(extrasSection);
 
     const advanced = document.createElement('details');
     advanced.className = 'advanced';
     const summary = document.createElement('summary');
-    summary.textContent = 'OpenOCD 高级选项';
+    summary.append(icon('settings-gear'), document.createTextNode('OpenOCD 高级选项'));
+    const advancedHint = document.createElement('span');
+    advancedHint.className = 'summary-hint';
+    advancedHint.textContent = `${selection.flash.probeId} · ${selection.flash.targetId}`;
+    summary.append(advancedHint);
     const grid = document.createElement('div');
     grid.className = 'advanced-grid';
     grid.append(
@@ -183,12 +243,23 @@
     const toolchain = selectField('交叉工具链', state.linuxToolchains, selection.linux.toolchainFamily, (value) => {
       updateFromSelection({ ...selection, linux: { ...selection.linux, toolchainFamily: value } });
     });
-    panel.append(toolchain);
+    const section = document.createElement('section');
+    section.className = 'control-section';
+    section.append(sectionHeader('交叉工具链', '选择目标架构与编译器。', 'device-desktop'));
+    section.append(toolchain);
+    panel.append(section);
     const selected = selectedOption(state.linuxToolchains, selection.linux.toolchainFamily);
     if (selected) {
-      const detail = document.createElement('p');
-      detail.className = 'field-detail';
-      detail.textContent = [selected.description, selected.detail].filter(Boolean).join(' · ');
+      const detail = document.createElement('div');
+      detail.className = 'toolchain-status';
+      detail.append(icon(selected.detail?.includes('Not found') ? 'warning' : 'pass'));
+      const copy = document.createElement('div');
+      const name = document.createElement('strong');
+      name.textContent = selected.description || selected.label;
+      const note = document.createElement('span');
+      note.textContent = selected.detail || '';
+      copy.append(name, note);
+      detail.append(copy);
       panel.append(detail);
     }
     const note = document.createElement('p');
@@ -218,21 +289,28 @@
 
   function setBusy(active, text) {
     busy = active;
-    status.textContent = text || (active ? '处理中' : '就绪');
+    const statusText = status.querySelector('.status-text');
+    if (statusText) statusText.textContent = text || (active ? '处理中' : '就绪');
     status.className = `status-badge${active ? ' busy' : ''}`;
+    document.querySelector('.actions')?.classList.toggle('busy', active);
     render();
   }
 
   function result(resultValue) {
     busy = false;
-    status.textContent = resultValue.ok ? '已完成' : '失败';
+    const statusText = status.querySelector('.status-text');
+    if (statusText) statusText.textContent = resultValue.ok ? '已完成' : '失败';
     status.className = `status-badge ${resultValue.ok ? 'success' : 'error'}`;
+    document.querySelector('.actions')?.classList.remove('busy');
     workspaceSummary.textContent = resultValue.message;
     generatedFiles.replaceChildren();
     resultRegion.hidden = resultValue.files.length === 0;
     resultValue.files.forEach((file) => {
       const item = document.createElement('li');
-      item.textContent = file;
+      item.append(icon('check'));
+      const label = document.createElement('span');
+      label.textContent = file;
+      item.append(label);
       generatedFiles.append(item);
     });
     render();
@@ -241,16 +319,12 @@
 
   modeMcu.addEventListener('click', () => {
     if (!state || busy) return;
-    state.selection.mode = 'mcu';
-    saveSelection(state.selection);
-    render();
+    updateFromSelection({ ...state.selection, mode: 'mcu' });
   });
 
   modeLinux.addEventListener('click', () => {
     if (!state || busy) return;
-    state.selection.mode = 'linux';
-    saveSelection(state.selection);
-    render();
+    updateFromSelection({ ...state.selection, mode: 'linux' });
   });
 
   scanButton.addEventListener('click', () => {
@@ -273,11 +347,13 @@
     } else if (message.type === 'operationFinished') {
       result(message.result);
     } else if (message.type === 'workspaceScan') {
-      status.textContent = '扫描完成';
+      const statusText = status.querySelector('.status-text');
+      if (statusText) statusText.textContent = '扫描完成';
       status.className = 'status-badge';
       workspaceSummary.textContent = `${message.sources} 个源文件 · ${message.includeDirs} 个头文件目录 · ${message.defines} 个宏`;
     } else if (message.type === 'notification') {
-      status.textContent = message.message;
+      const statusText = status.querySelector('.status-text');
+      if (statusText) statusText.textContent = message.message;
       status.className = `status-badge ${message.level === 'error' ? 'error' : ''}`;
     }
   });

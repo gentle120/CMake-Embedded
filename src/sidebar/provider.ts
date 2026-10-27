@@ -74,6 +74,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
     };
     const nonce = randomBytes(16).toString('base64');
     view.webview.html = renderSidebarHtml(view.webview, this.context.extensionUri, nonce);
+    this.postState();
 
     const messageDisposable = view.webview.onDidReceiveMessage((value) => {
       const message = parseIncomingMessage(value);
@@ -260,7 +261,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
         return {
           ...project,
           ok: debug.ok,
-          files: [...project.files, ...debug.files],
+          files: [...new Set([...project.files, ...debug.files])],
           message: `${project.message} ${debug.message}`
         };
       });
@@ -278,14 +279,18 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
       return;
     }
     if (message.type === 'generateDebugConfiguration') {
-      await this.runGeneration('正在生成调试配置', () =>
-        generateDebugWorkflow(
+      await this.runGeneration('正在生成调试配置', async () => {
+        const debug = await generateDebugWorkflow(
           this.workflowHost(),
           getFlashTargetProfile(this.selectionValue.flash.targetId),
           getFlashProbeProfile(this.selectionValue.flash.probeId),
           this.selectionValue.flash.openocdPath
-        )
-      );
+        );
+        return {
+          ...debug,
+          files: [...new Set(debug.files)]
+        };
+      });
     }
   }
 

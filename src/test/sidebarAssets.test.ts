@@ -25,15 +25,21 @@ test('sidebar stylesheet covers the required responsive layout', () => {
 
   for (const selector of [
     '.app-header',
+    '.brand-mark',
+    '.workspace-card',
+    '.control-section',
     '.mode-switcher',
     '.configuration-panel',
-    '.option-card',
+    '.toggle-row',
+    '.switch-track',
+    '.status-dot',
+    '.actions.busy',
     '.primary-action',
-    '@media (max-width: 240px)'
+    '@media (max-width: 258px)'
   ]) {
     assert.ok(stylesheet.includes(selector), `missing ${selector}`);
   }
-  assert.doesNotMatch(stylesheet, /https?:\/\//);
+  assert.doesNotMatch(stylesheet, /url\((?:["']?https?:)/i);
 });
 
 test('compiles sidebar assets into the packaged extension output', () => {
@@ -41,4 +47,27 @@ test('compiles sidebar assets into the packaged extension output', () => {
 
   assert.ok(readFileSync(join(compiledRoot, 'main.js'), 'utf8').includes('acquireVsCodeApi'));
   assert.ok(readFileSync(join(compiledRoot, 'main.css'), 'utf8').includes('.configuration-panel'));
+});
+
+test('sidebar uses local inline mask icons for actions and status', () => {
+  const stylesheet = readFileSync(join(root, 'main.css'), 'utf8');
+
+  for (const icon of [
+    'folder',
+    'chip',
+    'device-desktop',
+    'refresh',
+    'play',
+    'zap',
+    'debug-alt',
+    'extensions',
+    'settings-gear',
+    'pass',
+    'warning',
+    'check'
+  ]) {
+    assert.match(stylesheet, new RegExp(`data-icon="${icon}"`));
+  }
+  assert.match(stylesheet, /\.ui-icon/);
+  assert.match(stylesheet, /data:image\/svg\+xml/);
 });

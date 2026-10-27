@@ -26,6 +26,7 @@ test('renders a CSP-safe sidebar shell with local assets', () => {
 
   assert.match(html, /default-src 'none'/);
   assert.match(html, /script-src 'nonce-nonce123'/);
+  assert.match(html, /img-src vscode-webview: data:/);
   assert.match(html, /main\.css/);
   assert.match(html, /main\.js/);
   assert.match(html, /id="mode-mcu"/);
