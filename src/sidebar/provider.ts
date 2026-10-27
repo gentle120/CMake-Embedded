@@ -54,6 +54,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
   private disposed = false;
   private busy = false;
   private selectionValue: SidebarSelection;
+  private readonly viewDisposables: vscode.Disposable[] = [];
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -83,8 +84,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
     const viewDisposable = view.onDidDispose(() => {
       messageDisposable.dispose();
       viewDisposable.dispose();
+      this.viewDisposables.splice(0).forEach((disposable) => {
+        if (disposable !== viewDisposable) {
+          disposable.dispose();
+        }
+      });
       this.view = undefined;
     });
+    this.viewDisposables.push(messageDisposable, viewDisposable);
   }
 
   selection(): SidebarSelection {
@@ -97,6 +104,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider, vscode.Dispo
 
   dispose(): void {
     this.disposed = true;
+    this.viewDisposables.splice(0).forEach((disposable) => disposable.dispose());
     this.view = undefined;
   }
 

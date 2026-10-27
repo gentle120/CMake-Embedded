@@ -1,6 +1,8 @@
-[English](README.md) | [中文](README.zh-CN.md)
+[中文主文档](README.md)
 
 # CMake-Embedded
+
+完整的默认中文文档已迁移到 [README.md](README.md)。
 
 一款用于 VS Code 的 CMake 工程生成插件，支持两个**互相独立**的方向：
 

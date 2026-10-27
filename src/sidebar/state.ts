@@ -64,7 +64,7 @@ const defaultVendor: DeviceVendor = 'STM';
 const defaultSeries: DeviceSeries = 'F1x';
 const defaultPart = 'STM32F103C8T6';
 const defaultLinuxToolchain: LinuxToolchainFamily = 'loongson';
-const defaultFlashTarget = 'stm32f1x';
+const defaultFlashTarget = 'stm32f1xx';
 const defaultFlashProbe = 'stlink';
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

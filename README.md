@@ -1,82 +1,84 @@
-[English](README.md) | [中文](README.zh-CN.md)
+[English documentation](README.zh-CN.md)
 
 # CMake-Embedded
 
-A VS Code extension that generates ready-to-build CMake projects for two
-**independent** targets:
+一款用于 VS Code 的 CMake 工程生成插件，支持两个**互相独立**的方向：
 
-- **MCU firmware** - bare-metal STM32 / GD32 projects with a linker script, a GNU
-  startup file, a toolchain file, and CMake.
-- **Linux / SoC applications** - cross compilation projects for Loongson
-  (loongarch64), ARM (aarch64), 32-bit ARM (armv7 hard-float), or RISC-V
-  (riscv64), with a toolchain file and CMake.
+- **MCU 固件**：裸机 STM32 / GD32 工程，生成链接脚本、GNU 启动文件、工具链和 CMake。
+- **Linux / SoC 应用**：交叉编译工程，目标为龙芯 (loongarch64)、ARM (aarch64)、
+  32 位 ARM (armv7 hard-float) 或 RISC-V (riscv64)。
 
-Both directions scan the opened workspace for C/C++ sources, header directories,
-and preprocessor definitions, then generate the files needed to build.
+两个方向都会扫描当前打开的工程目录，收集 C/C++ 源文件、头文件目录和宏，
+然后生成可直接构建的 CMake 工程。
 
-## Commands
+## 侧栏快速生成
 
-| Command | Direction | Purpose |
+安装插件后，VS Code 左侧活动栏会显示 **CMake-Embedded** 图标。打开工程目录，
+点击该图标即可在侧栏中切换 **MCU 固件**和 **Linux / SoC**，直接选择器件或
+交叉工具链并点击“生成工程”。
+
+- 选择结果按工作区保存，下次打开自动恢复。
+- MCU 页面可同时生成 `flash.py` 和 Cortex-Debug 配置。
+- 扫描工作区后可查看源文件、头文件目录和宏的数量。
+- 原有命令面板入口全部保留，可继续单独生成烧录脚本或调试配置。
+
+## 命令
+
+| 命令 | 方向 | 说明 |
 | --- | --- | --- |
-| `CMake-Embedded: Generate MCU Project` | MCU | Pick vendor, series, and part, then generate a bare-metal project |
-| `CMake-Embedded: Generate Linux Project` | Linux | Pick the cross toolchain, then generate a cross compilation project |
-| `CMake-Embedded: Generate OpenOCD Flash Script` | MCU | Generate `flash.py` only |
-| `CMake-Embedded: Generate Cortex-Debug Configuration` | MCU | Generate a `.vscode/launch.json` debug configuration only |
+| `CMake-Embedded: Generate MCU Project` | MCU | 按命令面板流程选择厂商、系列和型号，再生成裸机工程 |
+| `CMake-Embedded: Generate Linux Project` | Linux | 选择交叉工具链，再生成交叉编译工程 |
+| `CMake-Embedded: Generate OpenOCD Flash Script` | MCU | 仅生成 `flash.py` |
+| `CMake-Embedded: Generate Cortex-Debug Configuration` | MCU | 仅生成 `.vscode/launch.json` 调试配置 |
 
 ---
 
-## MCU direction
+## MCU 方向
 
-### Features
+### 功能
 
-- Generate `CMakeLists.txt` from the current project directory
-- Generate an MCU linker script and GNU assembler startup file
-- Generate the C runtime support files under `system/`
-- Generate Debug and Release configure and build presets for Ninja
-- Configure CMake Tools to use the generated presets
-- Configure C/C++ IntelliSense from the CMake compile database
-- Generate an optional OpenOCD `flash.py` script independently from CMake
-- Generate a Cortex-Debug OpenOCD launch configuration
-- Generate `.elf`, `.hex`, and `.bin` files after a successful build
-- Prompt before overwriting generated files
+- 根据当前工程目录生成 `CMakeLists.txt`
+- 生成 MCU 链接脚本和 GNU 汇编启动文件
+- 在 `system/` 目录生成 C 运行时支持文件
+- 生成适用于 Ninja 的 Debug 和 Release 配置及构建预设
+- 配置 CMake Tools 使用生成的工程预设
+- 使用 CMake 编译数据库配置 C/C++ 插件 IntelliSense
+- 可选生成独立于 CMake 的 OpenOCD `flash.py` 烧录脚本
+- 生成 Cortex-Debug 的 OpenOCD 调试配置
+- 构建成功后生成 `.elf`、`.hex` 和 `.bin` 文件
+- 覆盖已有生成文件前进行确认
 
-The flash script supports J-Link OB, J-Link, ST-Link, and DapLink. The CMake
-device selection and OpenOCD flash-target selection are independent, so a
-project can use a custom CMake build and still generate a flash script. The
-probe selection provides the OpenOCD interface configuration. GD32 F1/F4
-targets use the compatible STM32 F1/F4 OpenOCD targets.
+烧录脚本支持 J-Link OB、J-Link、ST-Link 和 DapLink。CMake 构建芯片和
+OpenOCD 烧录 target 独立选择，因此也可以给已有自定义 CMake 工程单独生成
+烧录脚本。GD32 F1/F4 target 使用兼容的 STM32 F1/F4 OpenOCD target。
 
-### Demo
+### 演示
 
-![CMake-Embedded Demo](img/demo.png)
+![CMake-Embedded 演示](img/demo.png)
 
-The device database currently includes common STM32/GD32 F1 and F4 parts plus
-the STM32L4 family. The device picker groups them by vendor first (`STM` or
-`GD`), then by series (`STMF1x`, `STMF4x`, `STML4x`, `GDF1x`, or `GDF4x`).
+当前芯片数据库支持常用的 STM32/GD32 F1、F4 型号和 STM32L4 型号。
+侧栏和命令面板都会先按厂商选择，再按系列和具体型号选择。
 
-### Usage
+### 使用方法
 
-1. Open the MCU project folder in VS Code.
-2. Open the Command Palette and run `CMake-Embedded: Generate MCU Project`.
-3. Pick the vendor, series, and part, then confirm the generated files when asked.
-4. Configure and build the project with the generated presets:
+1. 使用 VS Code 打开 MCU 工程目录。
+2. 点击活动栏中的 **CMake-Embedded**，进入“生成配置”。
+3. 选择厂商、系列和型号，按需勾选烧录脚本或调试配置，然后点击“生成工程”。
+4. 使用生成的预设配置并构建工程：
 
    ```powershell
-   cmake --preset debug      # or cmake --preset release
+   cmake --preset debug      # 或 cmake --preset release
    cmake --build --preset debug
    ```
 
-The project generator asks whether `flash.py` should also be generated. If
-selected, it asks for an OpenOCD flash target and probe separately from the
-CMake build device. You can also run `CMake-Embedded: Generate OpenOCD Flash
-Script` by itself. This command asks only for the flash target and debug probe,
-then writes `flash.py` in the project root without changing an existing CMake
-project. The flash target database includes STM32 F0/F1/F2/F3/F4/F7/G0/G4/H7/
-L0/L1/L4/L5/U5/WB/WL families and GD32 E23x/F1/F4/VF103 targets.
+启用 `flash.py` 后，侧栏会显示 OpenOCD target、调试器和路径高级选项。
+也可以点击“仅生成 flash.py”。烧录 target 覆盖 STM32
+F0/F1/F2/F3/F4/F7/G0/G4/H7/L0/L1/L4/L5/U5/WB/WL 和 GD32
+E23x/F1/F4/VF103 系列。
 
-Set `CMake-Embedded: Openocd Path` (`cmakeEmbedded.openocdPath`) in VS Code
-settings when OpenOCD is not available in `PATH`. The generated script stores
-that value as its default and accepts an override when needed:
+如果 OpenOCD 不在系统 `PATH` 中，可在 VS Code 设置里配置
+`CMake-Embedded: Openocd Path`（`cmakeEmbedded.openocdPath`）。
+生成的脚本会以该路径为默认值，也支持运行时覆盖：
 
 ```powershell
 python flash.py
@@ -86,19 +88,15 @@ python flash.py --openocd D:\Tools\OpenOCD\bin\openocd.exe
 python flash.py --dry-run
 ```
 
-If Cortex-Debug cannot find the ARM GNU toolchain, set `CMake-Embedded: Arm
-Toolchain Path` (`cmakeEmbedded.armToolchainPath`) to the `bin` directory
-containing the `arm-none-eabi` tools. The generated debug configuration uses
-this path and sets the toolchain prefix to `arm-none-eabi`.
+如果 Cortex-Debug 找不到 ARM GNU 工具链，可配置
+`CMake-Embedded: Arm Toolchain Path`（`cmakeEmbedded.armToolchainPath`），
+填写 `arm-none-eabi` 工具所在的 `bin` 目录。
 
-Run `CMake-Embedded: Generate Cortex-Debug Configuration` to add a standard
-OpenOCD launch configuration to `.vscode/launch.json`. The generated entry
-uses `${command:cmake.launchTargetPath}` for the firmware, so it works with
-the generated CMake project and with a user-provided CMake project. Existing
-launch configurations are preserved. Press `F5` in VS Code to start the
-Cortex-Debug session.
+勾选“生成 Cortex-Debug 配置”或点击同名命令后，插件会向
+`.vscode/launch.json` 添加标准 OpenOCD 调试配置。已有其他配置会保留。
+生成后按 `F5` 即可启动 Cortex-Debug。
 
-### Generated layout
+### 生成后的目录结构
 
 ```text
 <project>/
@@ -108,10 +106,10 @@ Cortex-Debug session.
 ├── .vscode/
 │   ├── settings.json
 │   ├── c_cpp_properties.json
-│   └── launch.json             (optional Cortex-Debug configuration)
+│   └── launch.json             （可选 Cortex-Debug 调试配置）
 ├── <mcu>.ld
 ├── startup_<device>.S
-├── flash.py                    (optional OpenOCD flash script)
+├── flash.py                    （可选 OpenOCD 烧录脚本）
 ├── cmake/
 │   └── <device>-toolchain.cmake
 └── system/
@@ -119,63 +117,58 @@ Cortex-Debug session.
     └── sysmem.c
 ```
 
-The build directories are `build/debug` and `build/release`. Firmware output files are generated
-there together with the map file and memory usage report.
+构建目录为 `build/debug` 和 `build/release`。固件输出、map 文件和内存使用
+报告也会生成在该目录下。
 
 ---
 
-## Linux direction
+## Linux 方向
 
-### Features
+### 功能
 
-- Generate `CMakeLists.txt` from the current project directory
-- Generate the cross toolchain file `cmake/linux-toolchain.cmake`
-- Generate Debug and Release Ninja configure and build presets
-- Generate `.linux-cmake.json`, recording the selected toolchain and project structure
-- Configure CMake Tools to use the generated presets and C/C++ IntelliSense from
-  the CMake compile database
-- Prompt before overwriting generated files
+- 根据当前工程目录生成 `CMakeLists.txt`
+- 生成交叉编译工具链文件 `cmake/linux-toolchain.cmake`
+- 生成 Debug 和 Release 两个 Ninja 配置及构建预设
+- 生成 `.linux-cmake.json`，记录所选工具链和工程结构
+- 配置 CMake Tools 和 C/C++ IntelliSense
+- 覆盖已有生成文件前进行确认
 
-The toolchain file only contains **compiler command names** (for example
-`loongarch64-linux-gnu-gcc`), never absolute paths, so the same project builds on
-any machine.
+工具链文件只写**编译器命令名**（例如 `loongarch64-linux-gnu-gcc`），
+不写绝对路径，因此同一工程可以在不同机器上使用。
 
-### Supported cross toolchains
+### 支持的交叉工具链
 
-| Name | Prefix | `CMAKE_SYSTEM_PROCESSOR` |
+| 名称 | 前缀 | `CMAKE_SYSTEM_PROCESSOR` |
 | --- | --- | --- |
-| Loongson (loongarch64) | `loongarch64-linux-gnu-` | `loongarch64` |
+| 龙芯 (loongarch64) | `loongarch64-linux-gnu-` | `loongarch64` |
 | ARM (aarch64) | `aarch64-linux-gnu-` | `aarch64` |
-| ARM 32-bit (armv7 hard-float) | `arm-linux-gnueabihf-` | `arm` |
+| ARM 32 位 (armv7 hard-float) | `arm-linux-gnueabihf-` | `arm` |
 | RISC-V (riscv64) | `riscv64-linux-gnu-` | `riscv64` |
 
-### Toolchain lookup
+### 工具链查找
 
-There are **no extension settings for toolchain paths**. The toolchain is located
-through the environment only:
+插件不保存交叉工具链路径，只从环境变量查找：
 
-1. `CROSS_COMPILE`, for example `export CROSS_COMPILE=loongarch64-linux-gnu-`
+1. `CROSS_COMPILE`，例如 `export CROSS_COMPILE=loongarch64-linux-gnu-`
 2. `CC` / `CXX`
-3. `PATH`, matching a supported `gcc` + `g++` prefix pair
+3. `PATH` 中匹配上述前缀的 `gcc` + `g++`
 
-All four families are always offered in the picker. An entry that was found in
-the environment is annotated with its source and directory; an entry that was not
-found can still be generated, and only requires the toolchain `bin` directory on
-`PATH` before building.
+侧栏始终列出四个工具链系列。已找到的工具链会显示来源和目录；未找到的
+工具链也可以生成工程，只需在构建前把对应 `bin` 目录加入 `PATH`。
 
-### Usage
+### 使用方法
 
-1. Open **one project root folder** in VS Code (one project per root).
-2. Open the Command Palette and run `CMake-Embedded: Generate Linux Project`.
-3. Pick the cross toolchain (Loongson, ARM aarch64, ARM 32-bit, or RISC-V) and confirm the generated files.
-4. Configure and build the project with the generated presets:
+1. 使用 VS Code 打开**一个工程根目录**。
+2. 在 CMake-Embedded 侧栏切换到 **Linux / SoC**。
+3. 选择交叉工具链，然后点击“生成工程”。
+4. 使用生成的预设配置并构建工程：
 
    ```bash
-   cmake --preset debug      # or cmake --preset release
+   cmake --preset debug      # 或 cmake --preset release
    cmake --build --preset debug
    ```
 
-### Generated layout
+### 生成后的目录结构
 
 ```text
 <project>/
@@ -189,47 +182,37 @@ found can still be generated, and only requires the toolchain `bin` directory on
     └── linux-toolchain.cmake
 ```
 
-The build directories are `build/debug` and `build/release`. The user code
-section of an existing `CMakeLists.txt` (between `# CMAKE-EMBEDDED USER CODE
-BEGIN` and `END`) is preserved when regenerating, so hand-written
-`target_sources`, `target_link_libraries`, and similar blocks survive.
+构建目录为 `build/debug` 和 `build/release`。已有 `CMakeLists.txt` 中
+`# CMAKE-EMBEDDED USER CODE BEGIN` 和 `END` 之间的内容会在重新生成时保留。
 
 ---
 
-## Requirements
+## 环境要求
 
-- VS Code 1.85 or newer
-- CMake Tools extension
-- C/C++ extension
-- CMake 3.22 or newer
+- VS Code 1.85 或更高版本
+- CMake Tools 插件
+- C/C++ 插件
+- CMake 3.22 或更高版本
 - Ninja
 
-Depending on the direction:
+- **MCU**：Arm GNU Toolchain，并确保 `arm-none-eabi-gcc`、`arm-none-eabi-g++`、
+  `arm-none-eabi-objcopy` 和 `arm-none-eabi-size` 位于 `PATH` 中。
+- **Linux**：交叉工具链，并确保对应前缀的 `gcc`、`g++` 位于 `PATH` 中。
 
-- **MCU**: Arm GNU Toolchain with `arm-none-eabi-gcc`, `arm-none-eabi-g++`,
-  `arm-none-eabi-objcopy`, and `arm-none-eabi-size` available in `PATH`. The
-  Cortex-Debug extension is only needed to generate a debug configuration.
-- **Linux**: a cross toolchain with `loongarch64-linux-gnu-gcc`,
-  `aarch64-linux-gnu-gcc`, `arm-linux-gnueabihf-gcc`, or `riscv64-linux-gnu-gcc`
-  (and the matching `g++`) available in `PATH`.
-
-## Development
+## 开发
 
 ```powershell
 npm install
 npm test
 ```
 
-Press `F5` in VS Code to launch an Extension Development Host, open a project,
-and run `CMake-Embedded: Generate MCU Project` or `CMake-Embedded: Generate
-Linux Project` from the Command Palette.
+在 VS Code 中按 `F5` 启动扩展开发主机，打开工程后点击活动栏图标，
+即可打开侧栏。
 
-To debug the Linux direction inside WSL, open this extension project in a WSL
-window first and press `F5` there, so the extension host runs on the WSL side
-and sees the WSL `PATH`.
+如果在 WSL 中调试 Linux 方向，先在本插件工程的 WSL 窗口按 `F5`，
+这样扩展宿主才能读取 WSL 的 `PATH`。
 
-## Project Status
+## 项目状态
 
-This repository is an early extension prototype. Device profiles and generated
-templates are intentionally kept small so more MCU families can be added
-incrementally.
+当前仓库仍是早期插件原型。芯片配置和代码模板保持较小，后续会逐步增加
+更多 MCU 系列支持。
